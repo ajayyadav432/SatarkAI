@@ -7,7 +7,8 @@ Paste an SMS, e-mail, chat message or link. You get a risk level (Safe / Low / M
 High / Critical), the reasons for it, every link, phone number and UPI ID in the message,
 a warning before any risky link opens, a searchable history and a security dashboard.
 
-It runs fully offline on one laptop. No API key, no paid service, no GPU.
+The analysis runs fully offline on one laptop. No API key, no paid service, no GPU. (The
+assistant can optionally use Groq for free-form answers; see below.)
 
 ## Team
 
@@ -24,7 +25,7 @@ Use the terminal inside VS Code (the Python environment was created there).
 
 ```bash
 ./run.sh            # start the app, then open http://localhost:8000
-./run.sh test       # run all 227 tests
+./run.sh test       # run all 240 tests
 ./run.sh seed       # add demo cases so the dashboard is not empty
 ./run.sh unseed     # remove the demo cases
 ./run.sh train      # download the datasets again and retrain the models (about 5 minutes)
@@ -34,10 +35,24 @@ On another computer, `./run.sh` rebuilds the Python environment by itself (needs
 once). It was built and tested with Python 3.13 only. The trained models are already in
 `models/`.
 
+### AI assistant (optional)
+
+The *Ask SatarkAI* assistant works without any setup: it answers from the scan result and
+a built-in safety guide (`app/data/faq.json`). To let it answer free-form questions with
+an AI model through Groq, copy `.env.example` to `.env` and put your key in it:
+
+```bash
+cp .env.example .env      # then edit .env:  GROQ_API_KEY=...
+```
+
+`.env` is in `.gitignore` and is never committed. Restart is not needed. Groq receives the
+question and a summary of the scan (level, score, reasons, domains), never the full
+message, because the message may contain instructions planted by the scammer.
+
 ## What to show in a 3-minute demo
 
-1. **Analyze**: click the example *Bank KYC (SMS)*. Show the score, the highlighted
-   words, and the list "Why this level" where every reason has a weight and the exact
+1. **Analyze**: click the example *Bank KYC (SMS)*. The scan runs step by step, showing
+   what each check found. Show the score, the highlighted words, and the list "Why this level" where every reason has a weight and the exact
    text that triggered it. The formula under the list reproduces the score.
 2. Click *हिंदी KYC* and *Hinglish KYC*: same scam, three languages.
 3. Click *Real OTP* and *Bank debit alert*: genuine messages stay Safe.
@@ -48,6 +63,10 @@ once). It was built and tested with Python 3.13 only. The trained models are alr
 6. **Dashboard**: cases per day, risk levels, scam categories, most common indicators,
    impersonated organisations, suspicious domains.
 7. **How it works**: measured accuracy, the data, and the known limits.
+8. **Ask SatarkAI** (bottom right): ask "Why is this rated Critical?" or
+   "mera paisa gaya, kya karu?".
+
+Tick *Instant result* next to Analyze to skip the step-by-step scan.
 
 Paste your own messages too. That is the real test.
 
@@ -121,15 +140,16 @@ extension does not block anything.
 ```
 app/
   main.py            REST API and static pages
+  chat.py            the assistant: built-in answers, optional Groq
   db.py              history: SQLite + full-text search
   config.py          app name, limits, risk levels
   analysis/          extract, url_features, url_scorecard, brands, rules, textprep,
                      models, scoring, pipeline, lookup
-  data/              brands.json, patterns.json, url_lists.json, samples.json (editable)
-  static/            index.html, app.js, styles.css, go.html, go.js, Chart.js (local copy)
+  data/              brands.json, patterns.json, url_lists.json, samples.json, faq.json (editable)
+  static/            index.html, app.js, styles.css, go.html, go.js, Chart.js and Inter font (local copies)
 ml/                  download_data.py, train.py, sanity_legit_urls.txt
 models/              trained models and metrics.json
-tests/               227 tests: unit, API, security, models, acceptance R1-R9, browser
+tests/               240 tests: unit, API, security, models, acceptance R1-R9, browser
 extension/           browser extension
 scripts/             seed_demo.py, check_brands.py
 PLAN.md              the plan, design decisions and the findings log
@@ -145,4 +165,5 @@ PLAN.md              the plan, design decisions and the findings log
 | Web page phishing, Hugging Face `pirocheto/phishing-url` | URL model, subdomain and path features | CC BY 4.0 |
 | OpenPhish community feed | extra test only, never training | non-commercial use only |
 
-Chart.js 4.5.1 (MIT) is stored in `app/static/vendor/` so the dashboard works offline.
+Chart.js 4.5.1 (MIT) is stored in `app/static/vendor/` so the dashboard works offline. The Inter
+font (from @fontsource-variable/inter 5.2.8, SIL Open Font License, `app/static/vendor/fonts/OFL.txt`) is stored there too.

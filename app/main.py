@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app import config, db
+from app import chat, config, db
 from app.analysis import brands, models, rules
 from app.analysis.extract import normalise_url
 from app.analysis.pipeline import analyze, analyze_url
@@ -68,6 +68,30 @@ class AnalyzeIn(BaseModel):
         return v
 
 
+class ChatTurn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class ChatContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=1, max_length=config.MAX_TEXT_CHARS)
+    channel: Literal["auto", "sms", "email", "social", "url"] = "auto"
+    sender: str | None = Field(default=None, max_length=config.MAX_SENDER_CHARS)
+
+
+class ChatIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    message: str = Field(min_length=1, max_length=1000)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=8)
+    context: ChatContext | None = None
+    faq_id: str | None = Field(default=None, max_length=40)
+
+
 class CaseUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -106,6 +130,7 @@ def meta():
         "warn_from_level": config.WARN_FROM_LEVEL,
         "samples": samples["samples"],
         "models": models.status(),
+        "assistant": {**chat.status(), "questions": chat.faq_questions()},
     }
 
 
@@ -114,6 +139,17 @@ def api_analyze(body: AnalyzeIn):
     result = analyze(body.text, channel=body.channel, sender=body.sender, lookup=body.lookup)
     result["case_id"] = db.save_case(result, source="user") if body.save else None
     return result
+
+
+@app.post("/api/chat")
+def api_chat(body: ChatIn):
+    """Safety assistant. The scan is re-run here, so the answer is based on the real result."""
+    result = None
+    if body.context:
+        c = body.context
+        result = analyze(c.text, channel=c.channel, sender=c.sender, lookup=False)
+    history = [t.model_dump() for t in body.history]
+    return chat.answer(body.message, history, result, faq_id=body.faq_id)
 
 
 @app.get("/api/check-url")

@@ -25,6 +25,35 @@
     return el;
   }
 
+  /** Create an SVG element (attributes only; no text from messages ever goes in here). */
+  function svg(tag, attrs, ...children) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v === null || v === undefined) continue;
+      if (k === "class") el.setAttribute("class", v);
+      else if (k === "text") el.textContent = v;
+      else el.setAttribute(k, v);
+    }
+    for (const c of children.flat(Infinity)) if (c) el.append(c);
+    return el;
+  }
+
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /** Count a number up from 0 for display only (never used where tests read exact values). */
+  function countUp(el, target, suffix, digits) {
+    const end = Number(target) || 0, d = digits || 0;
+    if (reducedMotion()) { el.textContent = end.toFixed(d) + (suffix || ""); return; }
+    const t0 = performance.now(), dur = 900;
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / dur), eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = (end * eased).toFixed(d) + (suffix || "");
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
   async function api(path, options) {
     const res = await fetch(path, options);
     let data = null;
@@ -115,22 +144,63 @@
     return [m, scale];
   }
 
-  function verdictCard(r, caseId) {
+  const LEVEL_VAR = { Safe: "--lvl-safe", Low: "--lvl-low", Medium: "--lvl-medium", High: "--lvl-high", Critical: "--lvl-critical" };
+
+  /** Semicircle dial. The arc animates; the number underneath is always the final score. */
+  function gauge(score, level) {
+    const arc = svg("path", { class: "arc", d: "M14 92 A76 76 0 0 1 166 92", pathLength: "100",
+      "stroke-dasharray": "100", "stroke-dashoffset": "100" });
+    arc.style.stroke = "var(" + LEVEL_VAR[level] + ")";
+    const el = svg("svg", { class: "gauge", viewBox: "0 0 180 104", "aria-hidden": "true" },
+      svg("path", { class: "track", d: "M14 92 A76 76 0 0 1 166 92" }), arc);
+    // Start the transition once the dial is on the page.
+    setTimeout(() => {
+      arc.setAttribute("stroke-dashoffset", String(100 - Math.max(1, score)));
+    }, 60);
+    return el;
+  }
+
+  function verdictCard(r, caseId, live) {
     const metaBits = [levelBadge(r.level, true)];
     if (r.category && r.category !== "None") metaBits.push(pill(r.category));
     metaBits.push(pill((CHANNEL_LABEL[r.channel] || r.channel) + (r.channel_detected ? " (detected)" : "")));
     if (caseId) metaBits.push(pill("Case #" + caseId));
-    return h("div", { class: "card" },
+    const actions = h("div", { class: "verdict-actions" },
+      h("button", { class: "btn small", type: "button", onclick: () => openChat("Why is this rated " + r.level + "?") }, "💬 Ask why"),
+      h("button", { class: "btn small", type: "button", onclick: () => copyReport(r) }, "📋 Copy report"));
+    return h("div", { class: "card verdict-card v-" + r.level, id: "sec-verdict" },
       h("div", { class: "verdict" },
-        h("div", { class: "score-box" },
-          h("div", { class: "score-num", text: String(r.score) }),
-          h("div", { class: "score-of", text: "risk score out of 100" })),
+        h("div", { class: "score-box", role: "img", "aria-label": "Risk score " + r.score + " out of 100" },
+          gauge(r.score, r.level),
+          h("div", { class: "score-overlay" },
+            h("div", { class: "score-num", text: String(r.score) }),
+            h("div", { class: "score-of", text: "risk score out of 100" }))),
         h("div", { class: "verdict-main" },
           h("div", { class: "verdict-meta" }, metaBits),
           h("h2", { text: r.summary }),
-          meter(r.score, r.level))),
-      h("h3", { text: "What to do" }),
-      h("ul", { class: "advice" }, (r.advice || []).map((a) => h("li", { text: a }))));
+          meter(r.score, r.level),
+          r.elapsed_ms !== undefined ? h("div", { class: "elapsed", text: "Analysed in " + r.elapsed_ms + " ms on this computer" }) : null)),
+      h("div", { class: "advice-box" },
+        h("h3", { text: "What to do" }),
+        h("ul", { class: "advice" }, (r.advice || []).map((a) => h("li", { text: a })))),
+      live ? actions : null);
+  }
+
+  function copyReport(r) {
+    const lines = ["SatarkAI report", "Risk: " + r.level + " (" + r.score + "/100)" + (r.category && r.category !== "None" ? ", " + r.category : ""),
+      r.summary, "", "Reasons:"].concat((r.factors || []).map((f) => "- " + f.title + " (+" + f.points + ")"));
+    if (r.urls && r.urls.length) lines.push("", "Links (safe form):", ...r.urls.map((u) => "- " + u.display + " : " + u.level));
+    lines.push("", "What to do:", ...(r.advice || []).map((a) => "- " + a));
+    navigator.clipboard.writeText(lines.join("\n")).then(() => toast("Report copied"), () => toast("Could not copy"));
+  }
+
+  /** Buttons that scroll to a result section. Not links: the page uses #hash routing. */
+  function jumpNav(r) {
+    const go = (id) => () => { const t = document.getElementById(id); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); };
+    const b = (label, id, n) => h("button", { type: "button", class: "jump-btn", onclick: go(id) }, label, n !== undefined ? h("b", { text: String(n) }) : null);
+    const bits = [b("Verdict", "sec-verdict"), b("Message", "sec-message"), b("Why", "sec-why", (r.factors || []).length)];
+    if (r.urls && r.urls.length) bits.push(b("Links", "sec-links", r.urls.length));
+    return h("nav", { class: "jump", "aria-label": "Result sections" }, bits);
   }
 
   function messageCard(r) {
@@ -140,7 +210,7 @@
     if (kinds.has("url")) key.append(h("span", {}, h("mark", { class: "hl-url", text: "abc" }), " link"));
     if (kinds.has("brand")) key.append(h("span", {}, h("mark", { class: "hl-brand", text: "abc" }), " organisation named"));
     if (kinds.has("ml")) key.append(h("span", {}, h("mark", { class: "hl-ml", text: "abc" }), " word the text model reacts to"));
-    const card = h("div", { class: "card" }, h("h3", { text: "Message" }));
+    const card = h("div", { class: "card", id: "sec-message" }, h("h3", { text: "Message" }));
     if (r.sender) card.append(h("p", { class: "small muted" }, "Sender: ", tag(r.sender)));
     card.append(highlightedMessage(r.text || "", r.highlights));
     if (kinds.size) card.append(key, h("p", { class: "small muted", text: "Hover over a highlight to see why it is marked." }));
@@ -148,15 +218,18 @@
   }
 
   function factorsCard(r) {
-    const card = h("div", { class: "card" }, h("h3", { text: "Why this level" }));
+    const card = h("div", { class: "card", id: "sec-why" }, h("h3", { text: "Why this level" }));
     if (!r.factors || !r.factors.length) {
       card.append(h("p", { class: "muted", text: "No scam indicators were found in the wording, the links or the sender." }));
       return card;
     }
-    for (const f of r.factors) {
+    const SHOW = 4;
+    const more = r.factors.length > SHOW
+      ? h("details", { class: "more-factors" }, h("summary", { text: "Show " + (r.factors.length - SHOW) + " more reasons" })) : null;
+    r.factors.forEach((f, idx) => {
       const bar = h("i");
       bar.style.width = f.points + "%";
-      card.append(h("div", { class: "factor" },
+      (idx < SHOW ? card : more).append(h("div", { class: "factor" },
         h("div", { class: "factor-pts" },
           h("b", { text: "+" + f.points }), h("small", { text: "weight" }),
           h("div", { class: "factor-bar" }, bar)),
@@ -166,7 +239,8 @@
           h("p", { text: f.detail }),
           f.evidence && f.evidence.length
             ? h("div", { class: "evidence" }, f.evidence.map((e) => tag(String(e)))) : null)));
-    }
+    });
+    if (more) card.append(more);
     const terms = r.factors.map((f) => "(1 - " + (f.points / 100).toFixed(2) + ")").join(" x ");
     card.append(h("div", { class: "formula" },
       "score = 100 x [ 1 - " + terms + " ] = " + (r.cap_applied ? r.score_uncapped + ", limited to " + r.score : r.score),
@@ -200,7 +274,7 @@
 
   function linksCard(r) {
     if (!r.urls || !r.urls.length) return null;
-    const card = h("div", { class: "card" }, h("h3", { text: "Links found (" + r.urls.length + ")" }),
+    const card = h("div", { class: "card", id: "sec-links" }, h("h3", { text: "Links found (" + r.urls.length + ")" }),
       h("p", { class: "small muted", text: "Links are shown in a safe, non-clickable form. Opening one goes through a warning page first." }));
     for (const u of r.urls) {
       const facts = [];
@@ -265,17 +339,129 @@
     return card;
   }
 
-  function renderResult(r, caseId) {
-    return [verdictCard(r, caseId), messageCard(r), factorsCard(r), linksCard(r), indicatorsCard(r), notesCard(r)]
-      .filter(Boolean);
+  /** live: the result on the Analyze page (gets the jump bar and the assistant buttons). */
+  function renderResult(r, caseId, live) {
+    return [live ? jumpNav(r) : null, verdictCard(r, caseId, live), messageCard(r), factorsCard(r), linksCard(r),
+      indicatorsCard(r), notesCard(r)].filter(Boolean);
+  }
+
+  // ---------- step-by-step scan ----------
+
+  const PIPELINE = [
+    { title: "Reading the message", hint: "Pull out links, phone numbers, UPI IDs and amounts" },
+    { title: "Checking every link", hint: "Lookalike domains, brand names on other domains, shorteners" },
+    { title: "Reading the wording", hint: "Urgency, threats, rewards, requests for secrets (EN / Hinglish / Hindi)" },
+    { title: "Checking sender and organisations", hint: "Is a bank or company being impersonated?" },
+    { title: "Asking the AI models", hint: "Text model and URL model, trained on public datasets" },
+    { title: "Combining the evidence", hint: "One score from 0 to 100 and a risk level" },
+  ];
+  const HIGH = new Set(["High", "Critical"]);
+  const plural = (n, one, many) => n + " " + (n === 1 ? one : (many || one + "s"));
+
+  /** What each pipeline stage found, taken from the real result. Returns [text, isWarning]. */
+  function stageFindings(r) {
+    const e = r.entities || {}, f = r.factors || [];
+    const bySrc = (...src) => f.filter((x) => src.includes(x.source));
+    const found = [plural((r.urls || []).length, "link"), plural((e.phones || []).length, "phone number"),
+      plural((e.upi_ids || []).length, "UPI ID")];
+    const out = [[(CHANNEL_LABEL[r.channel] || r.channel) + ": " + found.join(", "), false]];
+
+    const urls = (r.urls || []).slice().sort((a, b) => b.score - a.score);
+    out.push(urls.length
+      ? [(urls[0].registered_domain || urls[0].display) + " → " + urls[0].level + (urls.length > 1 ? " (worst of " + urls.length + ")" : ""), HIGH.has(urls[0].level)]
+      : ["No links in the message", false]);
+
+    const rules = bySrc("rule");
+    out.push(rules.length
+      ? [plural(rules.length, "warning pattern") + ": " + rules.slice(0, 2).map((x) => x.title).join(", ") + (rules.length > 2 ? "…" : ""), true]
+      : ["No scam wording found", false]);
+
+    const imp = bySrc("sender", "impersonation");
+    out.push(imp.length ? [imp[0].title, true]
+      : [(r.brands || []).length ? "Names " + r.brands.join(", ") + ", no impersonation sign" : "No organisation named", false]);
+
+    const ml = [];
+    let mlWarn = false;
+    if (r.ml_text && r.ml_text.used) { ml.push("text " + pct(r.ml_text.probability, 0) + " scam"); mlWarn = mlWarn || r.ml_text.probability >= 0.5; }
+    const urlMl = urls.filter((u) => u.ml && u.ml.used).map((u) => u.ml.probability);
+    if (urlMl.length) { const p = Math.max(...urlMl); ml.push("link " + pct(p, 0) + " phishing"); mlWarn = mlWarn || bySrc("ml-url").length > 0; }
+    out.push(ml.length ? ["Models: " + ml.join(", "), mlWarn] : ["Models not used for this message (see Notes)", false]);
+
+    out.push(["Score " + r.score + " → " + r.level + (f.length ? " from " + plural(f.length, "indicator") : ""), HIGH.has(r.level)]);
+    return out;
+  }
+
+  function pipelineList(withFindings) {
+    return PIPELINE.map((s, i) => h("li", { class: withFindings ? "step-row" : "" },
+      h("span", { class: "num", text: String(i + 1) }),
+      h("span", {}, h("b", { text: s.title }), h("small", { class: withFindings ? "finding" : "", text: s.hint }))));
+  }
+
+  /** Shows the six stages one by one with what each found. The analysis itself already finished. */
+  async function playScan(out, r) {
+    const rows = pipelineList(true);
+    const bar = h("i");
+    let skipped = false;
+    const skip = h("button", { type: "button", class: "btn small", onclick: () => { skipped = true; } }, "Skip");
+    out.replaceChildren(h("div", { class: "card scan-card" },
+      h("div", { class: "scan-head" }, h("h2", {}, h("span", { class: "radar", "aria-hidden": "true" }), "Scanning…"), skip),
+      h("div", { class: "scan-progress" }, bar),
+      h("ol", { class: "pipeline scan-steps" }, rows),
+      h("p", { class: "scan-note", text: "The analysis took " + r.elapsed_ms + " ms. The steps are shown slowly so you can follow them." })));
+    const findings = stageFindings(r);
+    for (let i = 0; i < rows.length && !skipped; i++) {
+      rows[i].classList.add("active");
+      await sleep(330);
+      rows[i].classList.remove("active");
+      rows[i].classList.add("done");
+      if (findings[i][1]) rows[i].classList.add("warn");
+      $(".finding", rows[i]).textContent = findings[i][0];
+      $(".num", rows[i]).textContent = findings[i][1] ? "!" : "✓";
+      bar.style.width = (100 * (i + 1) / rows.length) + "%";
+      await sleep(110);
+    }
+    if (!skipped) await sleep(350);
   }
 
   // ---------- Analyze view ----------
+
+  let lastScan = null;   // {text, channel, sender} of the last analysis, for the assistant
+
+  async function loadHeroStats() {
+    const host = $("#hero-stats");
+    const tile = (label, note) => {
+      const b = h("b", { text: "–" });
+      host.append(h("div", { class: "hstat" }, b, h("span", { text: label }), note ? h("small", { text: note }) : null));
+      return b;
+    };
+    try {
+      const [s, card] = await Promise.all([api("/api/stats?days=90"), api("/api/model-card")]);
+      const k = s.kpis;
+      host.replaceChildren();
+      countUp(tile("messages checked", "last 90 days" + (k.demo ? ", incl. " + k.demo + " demo cases" : "")), k.total);
+      countUp(tile("rated High or Critical", k.high_risk_share + "% of them"), k.high_risk);
+      const m = card.metrics;
+      if (m) countUp(tile("text model accuracy", "held-out SMS test set"), 100 * m.text_model.channels.sms.test.accuracy, "%", 1);
+      const patterns = card.rules.reduce((a, g) => a + g.patterns.en + g.patterns.hinglish + g.patterns.hi, 0);
+      countUp(tile("scam patterns", "English, Hinglish and Hindi"), patterns);
+    } catch (err) { host.hidden = true; }
+  }
 
   function initAnalyze() {
     const form = $("#analyze-form"), text = $("#text"), counter = $("#char-count");
     const updateCount = () => { counter.textContent = fmtInt(text.value.length); };
     text.addEventListener("input", updateCount);
+
+    const fast = $("#opt-fast");
+    try { fast.checked = localStorage.getItem("satark-fast") === "1"; } catch (e) { /* ignore */ }
+    fast.addEventListener("change", () => { try { localStorage.setItem("satark-fast", fast.checked ? "1" : "0"); } catch (e) { /* ignore */ } });
+
+    $("#paste-btn").addEventListener("click", async () => {
+      try { text.value = await navigator.clipboard.readText(); updateCount(); text.focus(); }
+      catch (e) { toast("The browser blocked clipboard access. Press Ctrl+V in the box instead."); text.focus(); }
+    });
+    $("#pipeline-preview").replaceChildren(...pipelineList(false));
+    loadHeroStats();
 
     async function run() {
       const body = {
@@ -287,14 +473,21 @@
       };
       if (!body.text.trim()) { toast("Paste a message or a link first."); text.focus(); return; }
       const btn = $("#analyze-btn");
-      btn.disabled = true; btn.textContent = "Analyzing...";
+      btn.disabled = true; btn.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), "Analyzing…");
       try {
         const r = await api("/api/analyze", {
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
         });
         const out = $("#result");
-        out.replaceChildren(...renderResult(r, r.case_id));
-        if (window.matchMedia("(max-width: 900px)").matches) out.scrollIntoView({ behavior: "smooth", block: "start" });
+        const reveal = () => {   // bring the top of the result column into view
+          const top = out.getBoundingClientRect().top;
+          if (top < 70 || top > window.innerHeight * 0.5) window.scrollTo({ top: window.scrollY + top - 84, behavior: "smooth" });
+        };
+        if (!$("#opt-fast").checked && !reducedMotion()) { const scan = playScan(out, r); reveal(); await scan; }
+        lastScan = { text: body.text, channel: body.channel, sender: body.sender, level: r.level };
+        out.replaceChildren(...renderResult(r, r.case_id, true));
+        reveal();
+        refreshChatSuggestions();
       } catch (err) {
         toast(err.message);
       } finally {
@@ -478,8 +671,40 @@
     return h("div", { class: "card chart-card" }, h("h2", { text: title }), h("div", { class: "sub", text: sub }), body);
   }
 
-  function kpi(label, value, sub, hero) {
-    return h("div", { class: "card kpi" + (hero ? " hero" : "") },
+  /** Donut of cases per risk level, drawn as SVG circles (one segment per level). */
+  function donut(levels, total) {
+    const segs = [];
+    let at = 0;
+    for (const l of levels) {
+      if (!l.n) continue;
+      const share = 100 * l.n / total;
+      const c = svg("circle", { class: "seg", cx: "85", cy: "85", r: "62", pathLength: "100",
+        "stroke-dasharray": share.toFixed(3) + " " + (100 - share).toFixed(3),
+        "stroke-dashoffset": String(25 - at) }, svg("title", { text: l.level + ": " + l.n + " cases (" + share.toFixed(0) + "%)" }));
+      c.style.stroke = "var(" + LEVEL_VAR[l.level] + ")";
+      segs.push(c);
+      at += share;
+    }
+    return svg("svg", { class: "donut", viewBox: "0 0 170 170", role: "img", "aria-label": "Cases by risk level" },
+      svg("circle", { class: "donut-bg", cx: "85", cy: "85", r: "62" }), segs,
+      svg("text", { class: "big", x: "85", y: "88", text: fmtInt(total) }),
+      svg("text", { class: "lbl", x: "85", y: "106", text: "cases" }));
+  }
+
+  function threatCard(s) {
+    const top = s.categories[0];
+    if (!top) return null;
+    const bits = [plural(top.n, "case") + " in the last " + s.days + " days, average risk " + Math.round(top.avg_score) + "/100."];
+    if (s.brands[0]) bits.push("Most impersonated: " + s.brands[0].brand + " (" + s.brands[0].n + ").");
+    if (s.factors[0]) bits.push("Most common sign: " + s.factors[0].title + ".");
+    return h("div", { class: "card threat-card" },
+      h("div", { class: "threat-ico", "aria-hidden": "true", text: "⚠" }),
+      h("div", {}, h("div", { class: "eyebrow-sm", text: "Top threat this period" }),
+        h("h2", { text: top.category }), h("p", { text: bits.join(" ") })));
+  }
+
+  function kpi(label, value, sub, hero, extra) {
+    return h("div", { class: "card kpi" + (hero ? " hero" : "") + (extra ? " " + extra : "") },
       h("div", { class: "label", text: label }), h("div", { class: "value", text: value }),
       sub ? h("div", { class: "sub", text: sub }) : null);
   }
@@ -533,7 +758,7 @@
 
     const kpis = h("div", { class: "kpis" },
       kpi("Cases analysed", fmtInt(k.total), "last " + s.days + " days", true),
-      kpi("High or Critical", fmtInt(k.high_risk), k.high_risk_share + "% of all cases"),
+      kpi("High or Critical", fmtInt(k.high_risk), k.high_risk_share + "% of all cases", false, k.high_risk ? "alert" : ""),
       kpi("Waiting for review", fmtInt(k.needs_review), "high-risk cases with status New"),
       kpi("Analysed today", fmtInt(k.today), ""),
       kpi("Average risk score", String(k.avg_score), "out of 100"),
@@ -547,7 +772,8 @@
 
     const levelItems = s.levels.map((l) => ({ name: l.level, value: l.n, level: l.level, node: levelBadge(l.level) }));
     const levelsCard = chartCard("Risk levels", "How many cases reached each level",
-      k.total ? barList(levelItems, { unit: "cases" }) : h("div", { class: "empty-chart", text: "No cases in this period." }));
+      k.total ? h("div", { class: "donut-wrap" }, donut(s.levels, k.total), barList(levelItems, { unit: "cases" }))
+        : h("div", { class: "empty-chart", text: "No cases in this period." }));
 
     const cats = chartCard("Scam categories", "Cases by type of scam (cases with no category are left out)",
       barList(s.categories.map((c) => ({ name: c.category, value: c.n })), { unit: "cases", empty: "No scam categories yet." }));
@@ -582,7 +808,7 @@
           h("td", { class: "num", text: fmtInt(c.high_risk) }))))))
         : h("div", { class: "empty-chart", text: "No cases in this period." }));
 
-    body.replaceChildren(kpis,
+    body.replaceChildren(kpis, threatCard(s) || "",
       h("div", { class: "dash-row" }, trendCard, levelsCard),
       h("div", { class: "dash-row" }, cats, facts, brandsCard),
       h("div", { class: "dash-row" }, domains, recent, channels));
@@ -754,6 +980,119 @@
     catch (err) { toast(err.message); }
   }
 
+  // ---------- assistant ----------
+
+  const chatState = { history: [], greeted: false, busy: false };
+  const SOURCE_NOTE = { result: "From your scan result", faq: "From the built-in safety guide", fallback: "Built-in assistant" };
+
+  /** Plain-text answer to nodes: '- ' lines become a list, **bold** becomes <b>. Text only, never HTML. */
+  function richText(text) {
+    const box = h("div", {});
+    let list = null;
+    const inline = (s) => s.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? h("b", { text: part }) : part));
+    for (const raw of String(text).split("\n")) {
+      const line = raw.trim();
+      if (!line) { list = null; continue; }
+      const m = /^[-*•]\s+(.*)$/.exec(line);
+      if (m) {
+        if (!list) { list = h("ul", {}); box.append(list); }
+        list.append(h("li", {}, inline(m[1])));
+      } else { list = null; box.append(h("p", {}, inline(line))); }
+    }
+    return box;
+  }
+
+  function chatBubble(role, content, src) {
+    const row = h("div", { class: "msg-row " + role },
+      h("div", { class: "bubble" }, role === "bot" ? richText(content) : h("p", { text: content })),
+      src ? h("div", { class: "msg-src", text: src }) : null);
+    const log = $("#chat-log");
+    log.append(row);
+    // Show the start of a long answer, not its end.
+    log.scrollTop = role === "bot" ? Math.max(0, row.offsetTop - log.offsetTop - 8) : log.scrollHeight;
+    return row;
+  }
+
+  function refreshChatSuggestions() {
+    const host = $("#chat-suggest");
+    if (!host || !META) return;
+    const chips = [];
+    const chip = (label, onclick) => h("button", { type: "button", class: "chip", onclick: onclick, text: label });
+    if (lastScan) {
+      chips.push(chip("Why is this rated " + lastScan.level + "?", () => sendChat("Why is this rated " + lastScan.level + "?")));
+      chips.push(chip("Is it safe to click the link?", () => sendChat("Is it safe to click the link?")));
+      chips.push(chip("What should I do now?", () => sendChat("What should I do now?")));
+    }
+    const pick = ["lost-money", "digital-arrest", "report", "upi", "kyc", "check-link"];
+    for (const id of pick) {
+      const q = META.assistant.questions.find((x) => x.id === id);
+      if (q) chips.push(chip(q.q, () => sendChat(q.q, q.id)));
+    }
+    host.replaceChildren(...chips);
+  }
+
+  async function sendChat(message, faqId) {
+    message = (message || "").trim();
+    if (!message || chatState.busy) return;
+    chatState.busy = true;
+    chatBubble("user", message);
+    const typing = h("div", { class: "msg-row bot" }, h("div", { class: "bubble typing", "aria-label": "Assistant is typing" }, h("i"), h("i"), h("i")));
+    $("#chat-log").append(typing);
+    $("#chat-log").scrollTop = $("#chat-log").scrollHeight;
+    const body = { message: message, history: chatState.history.slice(-8) };
+    if (lastScan) body.context = { text: lastScan.text, channel: lastScan.channel, sender: lastScan.sender };
+    if (faqId) body.faq_id = faqId;
+    try {
+      const [r] = await Promise.all([
+        api("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+        sleep(450)]);
+      typing.remove();
+      const src = r.source === "ai" ? "AI answer · Groq (" + r.model + ")" : SOURCE_NOTE[r.source] || "";
+      chatBubble("bot", r.answer, src + (r.note ? " · " + r.note : ""));
+      chatState.history.push({ role: "user", content: message.slice(0, 2000) }, { role: "assistant", content: r.answer.slice(0, 2000) });
+    } catch (err) {
+      typing.remove();
+      chatBubble("bot", "Sorry, I could not answer that: " + err.message);
+    } finally {
+      chatState.busy = false;
+    }
+  }
+
+  function openChat(question) {
+    const panel = $("#chat-panel");
+    panel.hidden = false;
+    $("#chat-fab").hidden = true;
+    $("#chat-fab").setAttribute("aria-expanded", "true");
+    if (!chatState.greeted) {
+      chatState.greeted = true;
+      chatBubble("bot", "Namaste! I am the SatarkAI assistant. Ask me about your scan result, or about any scam: KYC, UPI, digital arrest, fake jobs, lost money and more.");
+    }
+    refreshChatSuggestions();
+    if (question) sendChat(question); else $("#chat-input").focus();
+  }
+
+  function initChat() {
+    const ai = META.assistant && META.assistant.ai;
+    $("#chat-mode").textContent = ai ? "AI mode · Groq" : "Offline mode";
+    $("#chat-foot").textContent = ai
+      ? "Answers are written by an AI (Groq) and can be wrong. Your question and a summary of the scan (not the full message) are sent to Groq."
+      : "Offline: answers come from your scan result and a built-in safety guide. Nothing leaves this computer.";
+    $("#chat-fab").addEventListener("click", () => openChat());
+    $("#chat-close").addEventListener("click", () => {
+      $("#chat-panel").hidden = true;
+      $("#chat-fab").hidden = false;
+      $("#chat-fab").setAttribute("aria-expanded", "false");
+      $("#chat-fab").focus();
+    });
+    $("#chat-form").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const input = $("#chat-input");
+      const q = input.value;
+      input.value = "";
+      sendChat(q);
+    });
+  }
+
   // ---------- routing, theme, start-up ----------
 
   const VIEWS = ["analyze", "history", "dashboard", "about"];
@@ -795,6 +1134,7 @@
     document.title = META.app + " - " + META.tagline;
     initAnalyze();
     initHistory();
+    initChat();
     for (const r of $$("input[name=range]")) r.addEventListener("change", loadDashboard);
     $("#case-close").addEventListener("click", () => $("#case-dialog").close());
     $("#case-dialog").addEventListener("click", (ev) => { if (ev.target === ev.currentTarget) ev.currentTarget.close(); });

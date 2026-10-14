@@ -31,25 +31,42 @@
   <main>
     <!-- ANALYZE -->
     <section id="view-analyze" class="view">
+      <div class="hero-band">
+        <div class="hero-text">
+          <span class="eyebrow"><span class="pulse" aria-hidden="true"></span> AI scam &amp; phishing detection</span>
+          <h1 class="hero-title">Got a suspicious message?<br><span class="grad">Check it before you click.</span></h1>
+          <p class="hero-sub">Paste any SMS, e-mail, WhatsApp message or link. SatarkAI checks the links, the wording and the sender, and explains every reason behind its verdict.</p>
+          <ul class="hero-badges">
+            <li><span aria-hidden="true">&#x1F512;</span> Runs on this computer</li>
+            <li><span aria-hidden="true">&#x1F50E;</span> Explains every score</li>
+            <li><span aria-hidden="true">&#x1F5E3;</span> English, Hindi, Hinglish</li>
+          </ul>
+        </div>
+        <div class="hero-stats" id="hero-stats" aria-live="polite"></div>
+      </div>
+
       <div class="analyze-grid">
         <form id="analyze-form" class="card input-card" autocomplete="off">
-          <h1>Check a message or link</h1>
-          <p class="muted">Paste an SMS, e-mail, chat message or a link. Nothing is opened or sent anywhere: the analysis runs on this computer.</p>
+          <h2 class="card-title">Check a message or link</h2>
+          <p class="muted small">Nothing is opened or sent anywhere: the analysis runs on this computer.</p>
 
-          <fieldset class="segmented" id="channel-group">
+          <fieldset class="type-tiles" id="channel-group">
             <legend>Type</legend>
-            <label><input type="radio" name="channel" value="auto" checked><span>Auto</span></label>
-            <label><input type="radio" name="channel" value="sms"><span>SMS</span></label>
-            <label><input type="radio" name="channel" value="email"><span>E-mail</span></label>
-            <label><input type="radio" name="channel" value="social"><span>Chat / social</span></label>
-            <label><input type="radio" name="channel" value="url"><span>Link</span></label>
+            <label><input type="radio" name="channel" value="auto" checked><span><i aria-hidden="true">&#x2728;</i>Auto</span></label>
+            <label><input type="radio" name="channel" value="sms"><span><i aria-hidden="true">&#x1F4AC;</i>SMS</span></label>
+            <label><input type="radio" name="channel" value="email"><span><i aria-hidden="true">&#x2709;&#xFE0F;</i>E-mail</span></label>
+            <label><input type="radio" name="channel" value="social"><span><i aria-hidden="true">&#x1F4F1;</i>Chat</span></label>
+            <label><input type="radio" name="channel" value="url"><span><i aria-hidden="true">&#x1F517;</i>Link</span></label>
           </fieldset>
 
           <label class="field">
             <span>Message</span>
-            <textarea id="text" name="text" rows="9" maxlength="20000" required
-              placeholder="Paste the message here..."></textarea>
-            <small class="muted"><span id="char-count">0</span> / 20,000 characters</small>
+            <span class="textarea-wrap">
+              <textarea id="text" name="text" rows="8" maxlength="20000" required
+                placeholder="Paste the message here..."></textarea>
+              <button type="button" class="paste-btn" id="paste-btn" title="Paste from clipboard">Paste</button>
+            </span>
+            <small class="muted"><span id="char-count">0</span> / 20,000 characters &middot; Ctrl+Enter to analyze</small>
           </label>
 
           <label class="field">
@@ -64,21 +81,27 @@
           </div>
 
           <div class="actions">
-            <button type="submit" class="btn primary" id="analyze-btn">Analyze</button>
+            <button type="submit" class="btn primary big" id="analyze-btn">Analyze</button>
             <button type="button" class="btn" id="clear-btn">Clear</button>
+            <label class="check fast-toggle" title="Show the result at once, without the step-by-step scan">
+              <input type="checkbox" id="opt-fast"> <span>Instant result</span></label>
           </div>
 
-          <div class="samples">
-            <h2>Try an example</h2>
-            <p class="muted small">Examples were written by hand for this demo.</p>
+          <details class="samples" id="samples" open>
+            <summary><span>Try an example</span> <small class="muted">written by hand for this demo</small></summary>
             <div id="sample-list" class="chips"></div>
-          </div>
+          </details>
         </form>
 
         <div id="result" class="result-col" aria-live="polite">
           <div class="card empty-state">
-            <h2>Result appears here</h2>
-            <p class="muted">You get a risk level from Safe to Critical, the reasons for it, every link, phone number and UPI ID found in the message, and a warning before any risky link is opened.</p>
+            <div class="empty-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="40" height="40"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h2>Your result appears here</h2>
+            <p class="muted">Every message goes through the same checks:</p>
+            <ol class="pipeline" id="pipeline-preview"></ol>
+            <h3 class="legend-head">Risk levels</h3>
             <ul class="legend-levels" id="level-legend"></ul>
           </div>
         </div>
@@ -177,9 +200,29 @@
     <div id="case-body" class="dialog-body"></div>
   </dialog>
 
+  <!-- ASSISTANT -->
+  <button type="button" id="chat-fab" class="chat-fab" aria-controls="chat-panel" aria-expanded="false">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 3 13.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 8.5h8M8 12h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <span>Ask SatarkAI</span>
+  </button>
+  <section id="chat-panel" class="chat-panel" aria-label="SatarkAI assistant" hidden>
+    <header class="chat-head">
+      <div class="chat-avatar" aria-hidden="true">S</div>
+      <div class="chat-title"><strong>SatarkAI assistant</strong><small id="chat-mode">Scam-safety help</small></div>
+      <button type="button" class="icon-btn" id="chat-close" aria-label="Close assistant">&#x2715;</button>
+    </header>
+    <div class="chat-log" id="chat-log" aria-live="polite"></div>
+    <div class="chat-suggest" id="chat-suggest"></div>
+    <form class="chat-form" id="chat-form" autocomplete="off">
+      <input type="text" id="chat-input" maxlength="1000" placeholder="Ask about this result or any scam..." aria-label="Your question">
+      <button type="submit" class="btn primary" id="chat-send" aria-label="Send">&#x27A4;</button>
+    </form>
+    <p class="chat-foot" id="chat-foot"></p>
+  </section>
+
   <div id="toast" role="status" aria-live="polite" hidden></div>
   <footer class="foot muted small">
-    <span id="foot-text">SatarkAI</span> &middot; runs fully offline &middot; IEEE-IGNITE Hackathon 2026, SKIT025
+    <span id="foot-text">SatarkAI</span> &middot; analysis runs fully offline &middot; IEEE-IGNITE Hackathon 2026, SKIT025
   </footer>
 
   <script src="/static/vendor/chart.umd.min.js"></script>

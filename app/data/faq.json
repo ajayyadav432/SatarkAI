@@ -1,0 +1,107 @@
+{
+  "_note": "Answers used by the assistant when no AI service is set up, and given to the AI as reference. Keep every answer factual.",
+  "faq": [
+    {
+      "id": "lost-money",
+      "q": "I already paid or shared my details. What now?",
+      "keywords": ["paid", "lost", "money gone", "shared otp", "shared my", "transferred", "debited", "fraud happened", "scammed", "what now", "already", "paise", "paisa", "gaye", "gaya", "kat gaye", "loot"],
+      "answer": "Act at once, time matters:\n- Call the national cybercrime helpline 1930, or report at cybercrime.gov.in.\n- Call your bank's official number (from its website, app or card) and ask to block the card, UPI or net banking.\n- Change the passwords and PINs you shared, and log out of other devices.\n- Keep screenshots of the messages, numbers and transaction IDs as evidence."
+    },
+    {
+      "id": "report",
+      "q": "How do I report a scam message or call?",
+      "keywords": ["report", "complain", "complaint", "helpline", "1930", "cybercrime", "chakshu", "sanchar"],
+      "answer": "In India:\n- Money lost or at risk: call 1930 or file a complaint at cybercrime.gov.in.\n- Suspicious calls, SMS or WhatsApp messages (no money lost): report them on the Sanchar Saathi portal (sancharsaathi.gov.in) under 'Chakshu'.\n- Then block the sender and delete the message."
+    },
+    {
+      "id": "otp",
+      "q": "Someone is asking for my OTP. Should I share it?",
+      "keywords": ["otp", "one time password", "pin", "cvv", "password", "verification code"],
+      "answer": "Never share an OTP, PIN, CVV or password with anyone, even if they say they are from your bank, the police or a delivery company. Banks and genuine companies never ask for them. An OTP is your approval for a payment or a login: sharing it hands over control."
+    },
+    {
+      "id": "digital-arrest",
+      "q": "What is a 'digital arrest' scam?",
+      "keywords": ["digital arrest", "cbi", "police", "customs", "narcotics", "arrest", "video call", "enforcement directorate", "court"],
+      "answer": "Scammers pretend to be police, CBI, customs or other officials, often on a video call. They claim a parcel or bank account in your name is linked to a crime, tell you that you are under 'digital arrest', keep you on the call and demand money to 'clear your name'. Government agencies do not arrest anyone over a video call and do not ask for money transfers. End the call and report it at 1930 or cybercrime.gov.in."
+    },
+    {
+      "id": "kyc",
+      "q": "My bank says my KYC must be updated through a link. Is it real?",
+      "keywords": ["kyc", "pan", "aadhaar", "account blocked", "account suspended", "update kyc", "re-kyc"],
+      "answer": "Treat it as a scam. Banks do not ask you to complete KYC through a link in an SMS or WhatsApp message. KYC is done at the branch or inside the bank's official app or website, which you open yourself. Do not click the link and do not call the number in the message."
+    },
+    {
+      "id": "upi",
+      "q": "Do I need to enter my UPI PIN to receive money?",
+      "keywords": ["upi", "collect request", "receive money", "upi pin", "qr", "scan qr", "gpay", "phonepe", "paytm", "refund"],
+      "answer": "No. You never enter your UPI PIN or scan a QR code to receive money. Entering the PIN always sends money out of your account. Scammers use fake 'refund' or 'prize' collect requests and QR codes to trick you into paying."
+    },
+    {
+      "id": "check-link",
+      "q": "How can I tell if a link is fake?",
+      "keywords": ["link", "url", "website", "domain", "fake site", "check link", "safe to click", "https"],
+      "answer": "Look at the real domain: the part just before the first single '/'. In 'sbi.co.in.verify-kyc.xyz/login' the real site is 'verify-kyc.xyz', not SBI. Warning signs: a brand name on a domain it does not own, spelling tricks (paypa1, rnicrosoft), unusual endings (.xyz, .top, .click), IP addresses, link shorteners, and pages that ask for passwords or card details. 'https' or a padlock only means the connection is encrypted; scam sites have it too. When in doubt, type the official address yourself."
+    },
+    {
+      "id": "job",
+      "q": "Is a part-time job offering money for likes or reviews real?",
+      "keywords": ["job", "part time", "part-time", "task", "like videos", "work from home", "telegram", "earn", "salary", "commission"],
+      "answer": "This is a common task scam. You are paid small amounts for easy tasks at first, then asked to 'invest' or pay a deposit to unlock bigger earnings, and the money is never returned. A genuine employer does not ask you to pay to work."
+    },
+    {
+      "id": "lottery",
+      "q": "I won a lottery or prize I never entered. Is it real?",
+      "keywords": ["lottery", "prize", "won", "winner", "kbc", "lucky draw", "gift", "reward", "jackpot"],
+      "answer": "No. You cannot win a lottery or lucky draw you never entered. Any request to pay a 'tax', 'processing fee' or 'registration charge' to receive the prize is the scam itself."
+    },
+    {
+      "id": "electricity",
+      "q": "My electricity will be cut tonight unless I call a number. Is it real?",
+      "keywords": ["electricity", "bill", "power cut", "disconnect", "disconnected", "light bill", "bijli"],
+      "answer": "This is a well-known scam. Electricity companies do not threaten same-night disconnection through an SMS asking you to call a personal mobile number. Check your bill only through the company's official website or app."
+    },
+    {
+      "id": "parcel",
+      "q": "A courier says my parcel is on hold and I must pay a fee.",
+      "keywords": ["parcel", "courier", "delivery", "shipment", "fedex", "dhl", "blue dart", "india post", "customs fee", "on hold"],
+      "answer": "Fake delivery messages ask for a small fee or your address details through a link. Check the tracking number only on the courier's official website, which you open yourself. Do not pay through a link in the message."
+    },
+    {
+      "id": "family",
+      "q": "Someone says they are my relative with a new number and needs money.",
+      "keywords": ["hi mum", "hi mom", "new number", "relative", "son", "daughter", "friend", "urgent money", "emergency"],
+      "answer": "Call the person on the number you already have for them before you send anything. Scammers pose as family members with a 'new number' and an urgent need for money."
+    },
+    {
+      "id": "loan",
+      "q": "Is an instant loan app with no documents safe?",
+      "keywords": ["loan", "instant loan", "loan app", "no documents", "credit", "emi"],
+      "answer": "Be very careful. Fake loan apps charge hidden fees, take over your contacts and photos and use them to threaten you. Borrow only from banks and lenders registered with the RBI, and install apps only from the official app store."
+    },
+    {
+      "id": "apk",
+      "q": "A message asks me to install an app file (.apk).",
+      "keywords": ["apk", "install", "app file", "download app", "challan app", "remote", "anydesk", "teamviewer", "screen share"],
+      "answer": "Do not install it. An .apk sent in a message can read your SMS, including OTPs, and take over your phone. Install apps only from the official app store, and never install screen-sharing apps at a stranger's request."
+    },
+    {
+      "id": "levels",
+      "q": "What do the risk levels mean?",
+      "keywords": ["level", "score", "critical", "high", "medium", "low", "safe", "meaning", "risk score"],
+      "answer": "SatarkAI gives a score from 0 to 100:\n- Safe (0-19): no scam indicators.\n- Low (20-39): a few weak indicators.\n- Medium (40-59): several indicators, check independently.\n- High (60-79): strong indicators, do not interact.\n- Critical (80-100): matches known scams closely."
+    },
+    {
+      "id": "how-works",
+      "q": "How does SatarkAI decide?",
+      "keywords": ["how does", "how it works", "how do you", "model", "machine learning", "ai", "accurate", "accuracy", "decide"],
+      "answer": "SatarkAI pulls out the links, phone numbers and UPI IDs, checks every link for known tricks, matches the wording against rules in English, Hinglish and Hindi, and asks two trained models (one for text, one for links). Each piece of evidence has a weight, and they are combined into one score. Every reason is shown on the result, and the 'How it works' page has the measured accuracy."
+    },
+    {
+      "id": "privacy",
+      "q": "Is my message sent anywhere?",
+      "keywords": ["privacy", "private", "data", "sent anywhere", "stored", "upload", "offline", "secure"],
+      "answer": "The scan runs on this computer and the link is never opened. Cases are saved in the local history only if 'Save to history' is ticked. If the AI assistant is switched on, your question and a summary of the scan result (level, score, reasons and domains, not the full message) are sent to the AI service to write the answer."
+    }
+  ]
+}
