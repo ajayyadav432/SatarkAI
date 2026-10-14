@@ -1,0 +1,33 @@
+{
+  "_note": "Hand-written lists used by the URL checks. Edit freely.",
+  "shorteners": [
+    "bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd", "v.gd", "buff.ly", "rebrand.ly",
+    "cutt.ly", "shorturl.at", "tiny.cc", "rb.gy", "t.ly", "bl.ink", "s.id", "adf.ly", "bit.do",
+    "shorte.st", "clck.ru", "u.to", "tny.im", "ouo.io", "surl.li", "n9.cl", "wa.link", "short.io",
+    "rotf.lol", "qrco.de", "urlz.fr", "shrtco.de", "lnkd.in", "forms.gle", "1drv.ms", "linktr.ee"
+  ],
+  "user_content_hosts": [
+    "docs.google.com", "sites.google.com", "drive.google.com", "storage.googleapis.com",
+    "script.google.com", "forms.office.com", "sharepoint.com", "onedrive.live.com",
+    "dropbox.com", "notion.site", "wixsite.com", "weebly.com", "wordpress.com", "webflow.io",
+    "glitch.me", "replit.app", "repl.co", "pages.dev", "workers.dev", "netlify.app", "vercel.app",
+    "herokuapp.com", "firebaseapp.com", "web.app", "github.io", "blogspot.com", "000webhostapp.com",
+    "godaddysites.com", "square.site", "ipfs.io", "typeform.com", "jotform.com"
+  ],
+  "messaging_hosts": ["t.me", "telegram.me", "wa.me", "api.whatsapp.com", "chat.whatsapp.com"],
+  "sensitive_words": [
+    "login", "signin", "logon", "verify", "verification", "secure", "security", "account", "update",
+    "confirm", "password", "passwd", "credential", "wallet", "banking", "netbanking", "kyc", "ekyc",
+    "otp", "auth", "authenticate", "unlock", "unblock", "suspend", "recover", "validate", "billing",
+    "invoice", "payment", "refund", "reward", "rewards", "bonus", "prize", "winner", "gift",
+    "free", "claim", "lucky", "support", "helpdesk", "webscr", "cmd", "pan", "aadhaar", "aadhar",
+    "redeem", "cashback", "offer", "lottery"
+  ],
+  "exec_extensions": {
+    "apk": 0.5,
+    "exe": 0.45, "msi": 0.45, "scr": 0.45, "bat": 0.45, "cmd": 0.45, "vbs": 0.45, "jar": 0.45,
+    "ps1": 0.45, "dmg": 0.45, "pkg": 0.45, "lnk": 0.45, "hta": 0.45,
+    "zip": 0.2, "rar": 0.2, "7z": 0.2, "iso": 0.2, "img": 0.2
+  },
+  "tld_like_labels": ["com", "net", "org", "in", "co", "gov", "edu", "info", "biz", "uk", "us"]
+}

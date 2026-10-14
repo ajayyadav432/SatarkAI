@@ -1,0 +1,13 @@
+# Versions installed and tested on 14 Oct 2026 (Python 3.13)
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+scikit-learn==1.9.1
+numpy==2.5.4
+scipy==1.18.1
+joblib==1.6.0
+tldextract==5.4.0
+python-multipart==0.0.32
+pandas==3.0.6
+pyarrow==26.0.0
+pytest==9.1.1
+httpx==0.28.1

@@ -1,0 +1,1938 @@
+{
+  "generated_at": "2026-10-14T07:12:01+0530",
+  "versions": {
+    "python": "3.13.16",
+    "scikit_learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.0.6"
+  },
+  "seed": 42,
+  "downloads": {
+    "sms_spam/sms_spam.zip": {
+      "title": "SMS Spam Collection",
+      "host": "UCI Machine Learning Repository (dataset 228)",
+      "page": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+      "url": "https://archive.ics.uci.edu/static/public/228/sms+spam+collection.zip",
+      "bytes": 203415,
+      "sha256": "1587ea43e58e82b14ff1f5425c88e17f8496bfcdb67a583dbff9eefaf9963ce3",
+      "downloaded_at": "2026-10-14T06:31:49+0530",
+      "zip_members": [
+        "SMSSpamCollection",
+        "readme"
+      ]
+    },
+    "phishing_email/Phishing_Email.csv": {
+      "title": "Phishing Email Dataset",
+      "host": "Hugging Face (zefang-liu/phishing-email-dataset)",
+      "page": "https://huggingface.co/datasets/zefang-liu/phishing-email-dataset",
+      "url": "https://huggingface.co/datasets/zefang-liu/phishing-email-dataset/resolve/main/Phishing_Email.csv",
+      "bytes": 52034604,
+      "sha256": "18ef4fff1acb8986f0ab01e83ede6025420c829656af5a377560fce17e153b97",
+      "downloaded_at": "2026-10-14T06:31:53+0530"
+    },
+    "phiusiil/phiusiil.zip": {
+      "title": "PhiUSIIL Phishing URL Dataset",
+      "host": "UCI Machine Learning Repository (dataset 967)",
+      "page": "https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset",
+      "url": "https://archive.ics.uci.edu/static/public/967/phiusiil+phishing+url+dataset.zip",
+      "bytes": 15376007,
+      "sha256": "0a639fd03aea6308c5b1c10c92aa23c2ce1505447a9137271865cd0badc9a59a",
+      "downloaded_at": "2026-10-14T06:31:57+0530",
+      "zip_members": [
+        "PhiUSIIL_Phishing_URL_Dataset.csv"
+      ]
+    },
+    "web_page_phishing/train.parquet": {
+      "title": "Web page phishing URL dataset (train)",
+      "host": "Hugging Face (pirocheto/phishing-url)",
+      "page": "https://huggingface.co/datasets/pirocheto/phishing-url",
+      "url": "https://huggingface.co/datasets/pirocheto/phishing-url/resolve/main/data/train.parquet",
+      "bytes": 788989,
+      "sha256": "79a776a41e7f5c8a51d24ec6802284887fbdee296c5e09e8d881fc6c4852cc43",
+      "downloaded_at": "2026-10-14T06:31:59+0530"
+    },
+    "web_page_phishing/test.parquet": {
+      "title": "Web page phishing URL dataset (test)",
+      "host": "Hugging Face (pirocheto/phishing-url)",
+      "page": "https://huggingface.co/datasets/pirocheto/phishing-url",
+      "url": "https://huggingface.co/datasets/pirocheto/phishing-url/resolve/main/data/test.parquet",
+      "bytes": 430668,
+      "sha256": "8131f6e48b58136dac0222b419104d19d7d47938483d0a458403113750222a07",
+      "downloaded_at": "2026-10-14T06:32:01+0530"
+    }
+  },
+  "datasets": {
+    "sms_spam": {
+      "rows_raw": 5574,
+      "class_balance_raw": {
+        "safe": 4827,
+        "scam": 747
+      },
+      "duplicates_removed": 415,
+      "rows_used": 5159,
+      "class_balance_used": {
+        "safe": 4517,
+        "scam": 642
+      },
+      "notes": [
+        "English SMS collected mostly in the UK and Singapore, 2006-2012.",
+        "'Spam' here is advertising and premium-rate scams, not modern bank phishing."
+      ]
+    },
+    "phishing_email": {
+      "rows_raw": 18650,
+      "class_balance_raw": {
+        "safe": 11322,
+        "scam": 7328
+      },
+      "rows_removed": {
+        "missing_text": 16,
+        "text_is_the_word_empty": 533,
+        "shorter_than_20_chars": 16,
+        "duplicates": 607
+      },
+      "rows_used": 17478,
+      "class_balance_used": {
+        "safe": 10973,
+        "scam": 6505
+      },
+      "notes": [
+        "Texts are cut to the first 5,000 characters (longest raw e-mail: 17,036,692 characters).",
+        "'Safe' e-mails are old business and mailing-list mail; 'Phishing' also contains ordinary spam.",
+        "Text is lower-cased and pre-tokenised by the dataset authors."
+      ]
+    },
+    "phiusiil": {
+      "rows_raw": 235795,
+      "class_balance_raw": {
+        "safe": 134850,
+        "scam": 100945
+      },
+      "structure_by_class": {
+        "legitimate": {
+          "https_pct": 100.0,
+          "starts_with_www_pct": 100.0,
+          "has_path_pct": 0.0,
+          "has_query_pct": 0.0,
+          "has_subdomain_other_than_www_pct": 2.8
+        },
+        "phishing": {
+          "https_pct": 48.7,
+          "starts_with_www_pct": 41.4,
+          "has_path_pct": 27.2,
+          "has_query_pct": 6.0
+        }
+      },
+      "domains_in_both_classes_removed": 106,
+      "rows_on_those_domains": 607,
+      "duplicate_domains_removed": 37585,
+      "rows_used": 197603,
+      "class_balance_used": {
+        "safe": 132080,
+        "scam": 65523
+      },
+      "notes": [
+        "Bias found: every legitimate URL is 'https://www.<domain>' with no subdomain and no path, while phishing URLs vary. Scheme, 'www', subdomains and paths would give the label away.",
+        "Fix: only the registered domain is used from this dataset. Scheme and 'www' are never features. Subdomain and path features are learned from the other URL dataset only."
+      ]
+    },
+    "web_page_phishing": {
+      "rows_raw": 11430,
+      "class_balance_raw": {
+        "safe": 5715,
+        "scam": 5715
+      },
+      "duplicates_removed": 1,
+      "rows_used": 11429,
+      "class_balance_used": {
+        "safe": 5715,
+        "scam": 5714
+      },
+      "notes": [
+        "Full URLs. Legitimate URLs here do have paths and subdomains, so this dataset is the only source for path features.",
+        "The dataset's own train and test files are merged and re-split by domain (below)."
+      ]
+    }
+  },
+  "text_model": {
+    "algorithm": "TF-IDF (word 1-2 grams) + Logistic Regression, one model per channel",
+    "why": "Linear model: each word's contribution to the score is exact and can be shown.",
+    "why_two_models": "Measured: a model trained on one channel fails on the other (see tested_on_other_channel), so SMS/chat and e-mail each get their own model.",
+    "split": "80/20 stratified after removing duplicates, seed 42",
+    "threshold": 0.5,
+    "stop_words": 107,
+    "corpus_words_removed": [
+      "corp",
+      "crenshaw",
+      "daren",
+      "ect",
+      "enron",
+      "farmer",
+      "hou",
+      "houston",
+      "hpl",
+      "kaminski",
+      "kitchen",
+      "linguist",
+      "linguistics",
+      "louise",
+      "paliourg",
+      "shirley",
+      "sightings",
+      "spamassassin",
+      "stinson",
+      "vince"
+    ],
+    "channels": {
+      "sms": {
+        "trained_on": "sms_spam",
+        "params": {
+          "C": 100.0,
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 2,
+          "sublinear_tf": true
+        },
+        "cv_f1_by_C": {
+          "3.0": 0.9192,
+          "10.0": 0.9306,
+          "30.0": 0.9307,
+          "100.0": 0.9372
+        },
+        "n_features": 6733,
+        "train_rows": 4127,
+        "test_rows": 1032,
+        "test": {
+          "n": 1032,
+          "n_scam": 128,
+          "accuracy": 0.9855,
+          "precision": 0.9748,
+          "recall": 0.9062,
+          "f1": 0.9393,
+          "false_positive_rate": 0.0033,
+          "confusion": {
+            "tn": 901,
+            "fp": 3,
+            "fn": 12,
+            "tp": 116
+          },
+          "majority_class_accuracy": 0.876,
+          "roc_auc": 0.9968,
+          "pr_auc": 0.9851
+        },
+        "tested_on_other_channel": {
+          "channel": "email",
+          "n": 3496,
+          "n_scam": 1301,
+          "accuracy": 0.5904,
+          "precision": 0.4514,
+          "recall": 0.4673,
+          "f1": 0.4592,
+          "false_positive_rate": 0.3367,
+          "confusion": {
+            "tn": 1456,
+            "fp": 739,
+            "fn": 693,
+            "tp": 608
+          },
+          "majority_class_accuracy": 0.6279,
+          "roc_auc": 0.5875,
+          "pr_auc": 0.479
+        },
+        "top_scam_terms": [
+          {
+            "term": "phonetoken",
+            "weight": 20.706
+          },
+          {
+            "term": "moneytoken",
+            "weight": 19.527
+          },
+          {
+            "term": "urltoken",
+            "weight": 14.632
+          },
+          {
+            "term": "call phonetoken",
+            "weight": 11.559
+          },
+          {
+            "term": "txt",
+            "weight": 10.821
+          },
+          {
+            "term": "text",
+            "weight": 9.901
+          },
+          {
+            "term": "arsenal",
+            "weight": 8.384
+          },
+          {
+            "term": "service",
+            "weight": 8.17
+          },
+          {
+            "term": "reply",
+            "weight": 7.869
+          },
+          {
+            "term": "ringtone",
+            "weight": 7.828
+          },
+          {
+            "term": "mobile",
+            "weight": 7.769
+          },
+          {
+            "term": "girls waiting",
+            "weight": 6.931
+          },
+          {
+            "term": "tones",
+            "weight": 6.724
+          },
+          {
+            "term": "stop",
+            "weight": 6.361
+          },
+          {
+            "term": "uk",
+            "weight": 6.351
+          },
+          {
+            "term": "claim",
+            "weight": 6.275
+          },
+          {
+            "term": "win",
+            "weight": 6.231
+          },
+          {
+            "term": "games",
+            "weight": 6.2
+          },
+          {
+            "term": "won",
+            "weight": 6.15
+          },
+          {
+            "term": "numtoken",
+            "weight": 5.788
+          },
+          {
+            "term": "sexy",
+            "weight": 5.774
+          },
+          {
+            "term": "your mobile",
+            "weight": 5.743
+          },
+          {
+            "term": "girls",
+            "weight": 5.61
+          },
+          {
+            "term": "emailtoken",
+            "weight": 5.535
+          },
+          {
+            "term": "sale",
+            "weight": 5.476
+          },
+          {
+            "term": "latest",
+            "weight": 5.265
+          },
+          {
+            "term": "tone",
+            "weight": 5.125
+          },
+          {
+            "term": "order",
+            "weight": 5.123
+          },
+          {
+            "term": "nokia",
+            "weight": 4.938
+          },
+          {
+            "term": "choose",
+            "weight": 4.894
+          },
+          {
+            "term": "brought you",
+            "weight": 4.887
+          },
+          {
+            "term": "new",
+            "weight": 4.795
+          },
+          {
+            "term": "numtoken free",
+            "weight": 4.756
+          },
+          {
+            "term": "call",
+            "weight": 4.749
+          },
+          {
+            "term": "rgds",
+            "weight": 4.673
+          },
+          {
+            "term": "divorce",
+            "weight": 4.655
+          },
+          {
+            "term": "cost",
+            "weight": 4.579
+          },
+          {
+            "term": "sunshine",
+            "weight": 4.56
+          },
+          {
+            "term": "number numtoken",
+            "weight": 4.533
+          },
+          {
+            "term": "everyone",
+            "weight": 4.527
+          }
+        ],
+        "top_safe_terms": [
+          {
+            "term": "ring",
+            "weight": -6.096
+          },
+          {
+            "term": "ok",
+            "weight": -5.651
+          },
+          {
+            "term": "lt",
+            "weight": -4.914
+          },
+          {
+            "term": "gt",
+            "weight": -4.882
+          },
+          {
+            "term": "text you",
+            "weight": -4.787
+          },
+          {
+            "term": "lt gt",
+            "weight": -4.572
+          },
+          {
+            "term": "got",
+            "weight": -4.553
+          },
+          {
+            "term": "hey",
+            "weight": -4.523
+          },
+          {
+            "term": "da",
+            "weight": -4.101
+          },
+          {
+            "term": "home",
+            "weight": -4.036
+          },
+          {
+            "term": "sorry",
+            "weight": -3.933
+          },
+          {
+            "term": "yup",
+            "weight": -3.834
+          },
+          {
+            "term": "lor",
+            "weight": -3.821
+          },
+          {
+            "term": "think",
+            "weight": -3.727
+          },
+          {
+            "term": "work",
+            "weight": -3.539
+          },
+          {
+            "term": "later",
+            "weight": -3.389
+          },
+          {
+            "term": "way",
+            "weight": -3.278
+          },
+          {
+            "term": "moneytoken moneytoken",
+            "weight": -3.232
+          },
+          {
+            "term": "ard",
+            "weight": -3.215
+          },
+          {
+            "term": "know",
+            "weight": -3.082
+          },
+          {
+            "term": "want",
+            "weight": -3.079
+          },
+          {
+            "term": "your call",
+            "weight": -2.964
+          },
+          {
+            "term": "still",
+            "weight": -2.856
+          },
+          {
+            "term": "sure",
+            "weight": -2.845
+          },
+          {
+            "term": "fine",
+            "weight": -2.797
+          },
+          {
+            "term": "wat",
+            "weight": -2.72
+          },
+          {
+            "term": "sake",
+            "weight": -2.687
+          },
+          {
+            "term": "bedrm",
+            "weight": -2.67
+          },
+          {
+            "term": "bedrm moneytoken",
+            "weight": -2.67
+          },
+          {
+            "term": "numtoken bedrm",
+            "weight": -2.67
+          },
+          {
+            "term": "didn",
+            "weight": -2.59
+          },
+          {
+            "term": "yeah",
+            "weight": -2.562
+          },
+          {
+            "term": "liked",
+            "weight": -2.543
+          },
+          {
+            "term": "don",
+            "weight": -2.491
+          },
+          {
+            "term": "come",
+            "weight": -2.383
+          },
+          {
+            "term": "farm",
+            "weight": -2.366
+          },
+          {
+            "term": "oh",
+            "weight": -2.354
+          },
+          {
+            "term": "finish",
+            "weight": -2.34
+          },
+          {
+            "term": "lol",
+            "weight": -2.336
+          },
+          {
+            "term": "great deal",
+            "weight": -2.33
+          }
+        ],
+        "gate": {
+          "min_known_fraction": 0.6,
+          "min_tokens": 3,
+          "test_messages_passing_gate": 0.8857,
+          "known_fraction_percentiles": {
+            "1": 0.044,
+            "5": 0.5,
+            "25": 0.773,
+            "50": 0.9
+          },
+          "metrics_on_passing_messages": {
+            "n": 914,
+            "n_scam": 127,
+            "accuracy": 0.9847,
+            "precision": 0.9829,
+            "recall": 0.9055,
+            "f1": 0.9426,
+            "false_positive_rate": 0.0025,
+            "confusion": {
+              "tn": 785,
+              "fp": 2,
+              "fn": 12,
+              "tp": 115
+            },
+            "majority_class_accuracy": 0.8611,
+            "roc_auc": 0.9968,
+            "pr_auc": 0.9866
+          }
+        }
+      },
+      "email": {
+        "trained_on": "phishing_email",
+        "params": {
+          "C": 30.0,
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 3,
+          "sublinear_tf": true
+        },
+        "cv_f1_by_C": {
+          "3.0": 0.9683,
+          "10.0": 0.9714,
+          "30.0": 0.9738,
+          "100.0": 0.9722
+        },
+        "n_features": 135524,
+        "train_rows": 13982,
+        "test_rows": 3496,
+        "test": {
+          "n": 3496,
+          "n_scam": 1301,
+          "accuracy": 0.9826,
+          "precision": 0.9836,
+          "recall": 0.9693,
+          "f1": 0.9764,
+          "false_positive_rate": 0.0096,
+          "confusion": {
+            "tn": 2174,
+            "fp": 21,
+            "fn": 40,
+            "tp": 1261
+          },
+          "majority_class_accuracy": 0.6279,
+          "roc_auc": 0.9985,
+          "pr_auc": 0.9975
+        },
+        "tested_on_other_channel": {
+          "channel": "sms",
+          "n": 1032,
+          "n_scam": 128,
+          "accuracy": 0.5417,
+          "precision": 0.1846,
+          "recall": 0.7891,
+          "f1": 0.2993,
+          "false_positive_rate": 0.4934,
+          "confusion": {
+            "tn": 458,
+            "fp": 446,
+            "fn": 27,
+            "tp": 101
+          },
+          "majority_class_accuracy": 0.876,
+          "roc_auc": 0.7372,
+          "pr_auc": 0.3033
+        },
+        "top_scam_terms": [
+          {
+            "term": "your",
+            "weight": 11.136
+          },
+          {
+            "term": "click",
+            "weight": 11.112
+          },
+          {
+            "term": "remove",
+            "weight": 8.578
+          },
+          {
+            "term": "money",
+            "weight": 8.302
+          },
+          {
+            "term": "site",
+            "weight": 7.473
+          },
+          {
+            "term": "free",
+            "weight": 7.406
+          },
+          {
+            "term": "removed",
+            "weight": 6.488
+          },
+          {
+            "term": "low",
+            "weight": 6.289
+          },
+          {
+            "term": "over numtoken",
+            "weight": 6.274
+          },
+          {
+            "term": "viagra",
+            "weight": 6.126
+          },
+          {
+            "term": "online",
+            "weight": 6.008
+          },
+          {
+            "term": "you",
+            "weight": 5.996
+          },
+          {
+            "term": "hello",
+            "weight": 5.685
+          },
+          {
+            "term": "meds",
+            "weight": 5.553
+          },
+          {
+            "term": "life",
+            "weight": 5.546
+          },
+          {
+            "term": "urltoken mailing",
+            "weight": 5.494
+          },
+          {
+            "term": "best",
+            "weight": 5.494
+          },
+          {
+            "term": "software",
+            "weight": 5.436
+          },
+          {
+            "term": "phonetoken mobile",
+            "weight": 5.405
+          },
+          {
+            "term": "\u00bd\u00ef",
+            "weight": 5.387
+          },
+          {
+            "term": "reply",
+            "weight": 5.319
+          },
+          {
+            "term": "mobile phonetoken",
+            "weight": 5.282
+          },
+          {
+            "term": "net",
+            "weight": 5.251
+          },
+          {
+            "term": "watch",
+            "weight": 5.072
+          },
+          {
+            "term": "quality",
+            "weight": 5.063
+          },
+          {
+            "term": "email",
+            "weight": 4.918
+          },
+          {
+            "term": "visit",
+            "weight": 4.805
+          },
+          {
+            "term": "save",
+            "weight": 4.788
+          },
+          {
+            "term": "yourself",
+            "weight": 4.785
+          },
+          {
+            "term": "wish",
+            "weight": 4.724
+          },
+          {
+            "term": "mortgage",
+            "weight": 4.691
+          },
+          {
+            "term": "product",
+            "weight": 4.677
+          },
+          {
+            "term": "info",
+            "weight": 4.64
+          },
+          {
+            "term": "com",
+            "weight": 4.545
+          },
+          {
+            "term": "php",
+            "weight": 4.539
+          },
+          {
+            "term": "rolex",
+            "weight": 4.472
+          },
+          {
+            "term": "iso phonetoken",
+            "weight": 4.448
+          },
+          {
+            "term": "\u00bd\u00ef \u00bd\u00ef",
+            "weight": 4.377
+          },
+          {
+            "term": "guaranteed",
+            "weight": 4.369
+          },
+          {
+            "term": "goodbye",
+            "weight": 4.362
+          }
+        ],
+        "top_safe_terms": [
+          {
+            "term": "wrote",
+            "weight": -12.947
+          },
+          {
+            "term": "thanks",
+            "weight": -12.015
+          },
+          {
+            "term": "attached",
+            "weight": -9.031
+          },
+          {
+            "term": "language",
+            "weight": -9.024
+          },
+          {
+            "term": "university",
+            "weight": -8.647
+          },
+          {
+            "term": "url",
+            "weight": -7.826
+          },
+          {
+            "term": "urltoken date",
+            "weight": -7.779
+          },
+          {
+            "term": "url urltoken",
+            "weight": -7.627
+          },
+          {
+            "term": "cc",
+            "weight": -7.277
+          },
+          {
+            "term": "edu",
+            "weight": -7.179
+          },
+          {
+            "term": "date",
+            "weight": -6.999
+          },
+          {
+            "term": "forwarded",
+            "weight": -6.993
+          },
+          {
+            "term": "john",
+            "weight": -6.327
+          },
+          {
+            "term": "questions",
+            "weight": -6.3
+          },
+          {
+            "term": "research",
+            "weight": -6.269
+          },
+          {
+            "term": "california",
+            "weight": -6.226
+          },
+          {
+            "term": "emailtoken",
+            "weight": -6.144
+          },
+          {
+            "term": "meeting",
+            "weight": -5.76
+          },
+          {
+            "term": "employees",
+            "weight": -5.732
+          },
+          {
+            "term": "cc subject",
+            "weight": -5.61
+          },
+          {
+            "term": "numtoken numtoken",
+            "weight": -5.597
+          },
+          {
+            "term": "group",
+            "weight": -5.522
+          },
+          {
+            "term": "gas",
+            "weight": -5.52
+          },
+          {
+            "term": "think",
+            "weight": -5.417
+          },
+          {
+            "term": "users",
+            "weight": -5.363
+          },
+          {
+            "term": "issues",
+            "weight": -5.299
+          },
+          {
+            "term": "numtoken moneytoken",
+            "weight": -5.272
+          },
+          {
+            "term": "september",
+            "weight": -5.205
+          },
+          {
+            "term": "mark",
+            "weight": -5.199
+          },
+          {
+            "term": "congratulations",
+            "weight": -5.179
+          },
+          {
+            "term": "august",
+            "weight": -5.079
+          },
+          {
+            "term": "monday",
+            "weight": -5.004
+          },
+          {
+            "term": "david",
+            "weight": -4.971
+          },
+          {
+            "term": "between",
+            "weight": -4.97
+          },
+          {
+            "term": "energy",
+            "weight": -4.941
+          },
+          {
+            "term": "probably",
+            "weight": -4.941
+          },
+          {
+            "term": "list",
+            "weight": -4.9
+          },
+          {
+            "term": "seems",
+            "weight": -4.743
+          },
+          {
+            "term": "print",
+            "weight": -4.738
+          },
+          {
+            "term": "english",
+            "weight": -4.706
+          }
+        ],
+        "gate": {
+          "min_known_fraction": 0.6,
+          "min_tokens": 3,
+          "test_messages_passing_gate": 0.9791,
+          "known_fraction_percentiles": {
+            "1": 0.5,
+            "5": 0.745,
+            "25": 0.916,
+            "50": 0.96
+          },
+          "metrics_on_passing_messages": {
+            "n": 3423,
+            "n_scam": 1237,
+            "accuracy": 0.9836,
+            "precision": 0.9836,
+            "recall": 0.9709,
+            "f1": 0.9772,
+            "false_positive_rate": 0.0091,
+            "confusion": {
+              "tn": 2166,
+              "fp": 20,
+              "fn": 36,
+              "tp": 1201
+            },
+            "majority_class_accuracy": 0.6386,
+            "roc_auc": 0.9986,
+            "pr_auc": 0.9976
+          }
+        }
+      }
+    }
+  },
+  "url_model": {
+    "algorithm": "Scorecard: binned URL features + Logistic Regression",
+    "why": "Each feature adds a fixed number of points, so the reason for a score is exact.",
+    "params": {
+      "C": 0.03,
+      "features": 27,
+      "columns": 98,
+      "sample_weight": "equal total weight for each (dataset, class) cell"
+    },
+    "validation_by_C": {
+      "0.03": {
+        "auc_full_urls": 0.8599,
+        "auc_domains": 0.8398,
+        "mean_auc": 0.8498
+      },
+      "0.1": {
+        "auc_full_urls": 0.8573,
+        "auc_domains": 0.8401,
+        "mean_auc": 0.8487
+      },
+      "0.3": {
+        "auc_full_urls": 0.8564,
+        "auc_domains": 0.8402,
+        "mean_auc": 0.8483
+      },
+      "1.0": {
+        "auc_full_urls": 0.8558,
+        "auc_domains": 0.8402,
+        "mean_auc": 0.848
+      },
+      "3.0": {
+        "auc_full_urls": 0.8559,
+        "auc_domains": 0.8402,
+        "mean_auc": 0.848
+      }
+    },
+    "train_rows": 167489,
+    "test_rows": 41543,
+    "split": "80/20 by registered domain (a domain is never in both parts), seed 42",
+    "threshold": 0.84,
+    "threshold_rule": "lowest threshold with at most 5% false alarms on legitimate full URLs in the validation part",
+    "test": {
+      "all": {
+        "n": 41543,
+        "n_scam": 13951,
+        "accuracy": 0.8129,
+        "precision": 0.9658,
+        "recall": 0.4592,
+        "f1": 0.6224,
+        "false_positive_rate": 0.0082,
+        "confusion": {
+          "tn": 27365,
+          "fp": 227,
+          "fn": 7545,
+          "tp": 6406
+        },
+        "majority_class_accuracy": 0.6642,
+        "roc_auc": 0.8419,
+        "pr_auc": 0.8105
+      },
+      "phiusiil_domains": {
+        "n": 39522,
+        "n_scam": 12942,
+        "accuracy": 0.8163,
+        "precision": 0.9668,
+        "recall": 0.4546,
+        "f1": 0.6185,
+        "false_positive_rate": 0.0076,
+        "confusion": {
+          "tn": 26378,
+          "fp": 202,
+          "fn": 7058,
+          "tp": 5884
+        },
+        "majority_class_accuracy": 0.6725,
+        "roc_auc": 0.8373,
+        "pr_auc": 0.8018
+      },
+      "web_page_phishing": {
+        "n": 2021,
+        "n_scam": 1009,
+        "accuracy": 0.7467,
+        "precision": 0.9543,
+        "recall": 0.5173,
+        "f1": 0.671,
+        "false_positive_rate": 0.0247,
+        "confusion": {
+          "tn": 987,
+          "fp": 25,
+          "fn": 487,
+          "tp": 522
+        },
+        "majority_class_accuracy": 0.5007,
+        "roc_auc": 0.8838,
+        "pr_auc": 0.8969
+      }
+    },
+    "test_at_0.5": {
+      "all": {
+        "n": 41543,
+        "n_scam": 13951,
+        "accuracy": 0.8307,
+        "precision": 0.8382,
+        "recall": 0.6144,
+        "f1": 0.7091,
+        "false_positive_rate": 0.0599,
+        "confusion": {
+          "tn": 25938,
+          "fp": 1654,
+          "fn": 5380,
+          "tp": 8571
+        },
+        "majority_class_accuracy": 0.6642,
+        "roc_auc": 0.8419,
+        "pr_auc": 0.8105
+      },
+      "phiusiil_domains": {
+        "n": 39522,
+        "n_scam": 12942,
+        "accuracy": 0.832,
+        "precision": 0.8396,
+        "recall": 0.6021,
+        "f1": 0.7013,
+        "false_positive_rate": 0.056,
+        "confusion": {
+          "tn": 25091,
+          "fp": 1489,
+          "fn": 5149,
+          "tp": 7793
+        },
+        "majority_class_accuracy": 0.6725,
+        "roc_auc": 0.8373,
+        "pr_auc": 0.8018
+      },
+      "web_page_phishing": {
+        "n": 2021,
+        "n_scam": 1009,
+        "accuracy": 0.8041,
+        "precision": 0.825,
+        "recall": 0.7711,
+        "f1": 0.7971,
+        "false_positive_rate": 0.163,
+        "confusion": {
+          "tn": 847,
+          "fp": 165,
+          "fn": 231,
+          "tp": 778
+        },
+        "majority_class_accuracy": 0.5007,
+        "roc_auc": 0.8838,
+        "pr_auc": 0.8969
+      }
+    },
+    "black_box_comparison": {
+      "algorithm": "HistGradientBoostingClassifier on the same features, threshold 0.5",
+      "test": {
+        "all": {
+          "n": 41543,
+          "n_scam": 13951,
+          "accuracy": 0.8386,
+          "precision": 0.8585,
+          "recall": 0.6217,
+          "f1": 0.7212,
+          "false_positive_rate": 0.0518,
+          "confusion": {
+            "tn": 26162,
+            "fp": 1430,
+            "fn": 5277,
+            "tp": 8674
+          },
+          "majority_class_accuracy": 0.6642,
+          "roc_auc": 0.862,
+          "pr_auc": 0.8338
+        },
+        "phiusiil_domains": {
+          "n": 39522,
+          "n_scam": 12942,
+          "accuracy": 0.8375,
+          "precision": 0.8598,
+          "recall": 0.6018,
+          "f1": 0.7081,
+          "false_positive_rate": 0.0478,
+          "confusion": {
+            "tn": 25310,
+            "fp": 1270,
+            "fn": 5153,
+            "tp": 7789
+          },
+          "majority_class_accuracy": 0.6725,
+          "roc_auc": 0.8554,
+          "pr_auc": 0.8227
+        },
+        "web_page_phishing": {
+          "n": 2021,
+          "n_scam": 1009,
+          "accuracy": 0.8595,
+          "precision": 0.8469,
+          "recall": 0.8771,
+          "f1": 0.8617,
+          "false_positive_rate": 0.1581,
+          "confusion": {
+            "tn": 852,
+            "fp": 160,
+            "fn": 124,
+            "tp": 885
+          },
+          "majority_class_accuracy": 0.5007,
+          "roc_auc": 0.9357,
+          "pr_auc": 0.9421
+        }
+      }
+    },
+    "sanity": {
+      "hand_written_legitimate_urls": {
+        "n": 80,
+        "flagged_as_phishing": 1,
+        "false_positive_rate": 0.0125,
+        "flagged": [
+          {
+            "url": "https://huggingface.co/datasets",
+            "probability": 0.964
+          }
+        ],
+        "note": "URLs of well-known sites typed by hand. A small set: it only shows whether deep legitimate links raise false alarms."
+      },
+      "openphish_feed": {
+        "url": "https://raw.githubusercontent.com/openphish/public_feed/refs/heads/main/feed.txt",
+        "downloaded_at": "2026-10-14T06:48:07+0530",
+        "bytes": 15627,
+        "urls_in_feed": 300,
+        "urls_on_domains_not_in_training": 296,
+        "detected": 233,
+        "recall": 0.7872,
+        "note": "Live phishing URLs reported after the training data was collected. Phishing only, so it measures recall, not false alarms."
+      }
+    },
+    "scorecard": [
+      {
+        "feature": "domain_label_len",
+        "from": 0,
+        "to": 5,
+        "points": -0.571,
+        "train_rows": 12073
+      },
+      {
+        "feature": "domain_label_len",
+        "from": 5,
+        "to": 8,
+        "points": -0.261,
+        "train_rows": 29138
+      },
+      {
+        "feature": "domain_label_len",
+        "from": 8,
+        "to": 12,
+        "points": -0.215,
+        "train_rows": 53336
+      },
+      {
+        "feature": "domain_label_len",
+        "from": 12,
+        "to": 16,
+        "points": -0.062,
+        "train_rows": 39751
+      },
+      {
+        "feature": "domain_label_len",
+        "from": 16,
+        "to": 20,
+        "points": -0.027,
+        "train_rows": 18864
+      },
+      {
+        "feature": "domain_label_len",
+        "from": 20,
+        "to": 30,
+        "points": 0.247,
+        "train_rows": 11327
+      },
+      {
+        "feature": "domain_label_len",
+        "from": 30,
+        "to": null,
+        "points": 0.908,
+        "train_rows": 3000
+      },
+      {
+        "feature": "n_hyphens_domain",
+        "from": 0,
+        "to": 1,
+        "points": -0.512,
+        "train_rows": 144478
+      },
+      {
+        "feature": "n_hyphens_domain",
+        "from": 1,
+        "to": 2,
+        "points": 0.14,
+        "train_rows": 15857
+      },
+      {
+        "feature": "n_hyphens_domain",
+        "from": 2,
+        "to": 3,
+        "points": 0.089,
+        "train_rows": 4302
+      },
+      {
+        "feature": "n_hyphens_domain",
+        "from": 3,
+        "to": null,
+        "points": 0.284,
+        "train_rows": 2852
+      },
+      {
+        "feature": "n_digits_domain",
+        "from": 0,
+        "to": 1,
+        "points": -1.33,
+        "train_rows": 148157
+      },
+      {
+        "feature": "n_digits_domain",
+        "from": 1,
+        "to": 3,
+        "points": -0.168,
+        "train_rows": 8291
+      },
+      {
+        "feature": "n_digits_domain",
+        "from": 3,
+        "to": 6,
+        "points": 0.36,
+        "train_rows": 6149
+      },
+      {
+        "feature": "n_digits_domain",
+        "from": 6,
+        "to": null,
+        "points": 1.143,
+        "train_rows": 4892
+      },
+      {
+        "feature": "domain_entropy",
+        "from": 0,
+        "to": 2.0,
+        "points": 0.222,
+        "train_rows": 12323
+      },
+      {
+        "feature": "domain_entropy",
+        "from": 2.0,
+        "to": 2.5,
+        "points": -0.025,
+        "train_rows": 19680
+      },
+      {
+        "feature": "domain_entropy",
+        "from": 2.5,
+        "to": 3.0,
+        "points": -0.096,
+        "train_rows": 55042
+      },
+      {
+        "feature": "domain_entropy",
+        "from": 3.0,
+        "to": 3.5,
+        "points": -0.054,
+        "train_rows": 62022
+      },
+      {
+        "feature": "domain_entropy",
+        "from": 3.5,
+        "to": null,
+        "points": -0.028,
+        "train_rows": 18422
+      },
+      {
+        "feature": "vowel_ratio",
+        "from": 0,
+        "to": 0.2,
+        "points": 0.32,
+        "train_rows": 12886
+      },
+      {
+        "feature": "vowel_ratio",
+        "from": 0.2,
+        "to": 0.3,
+        "points": -0.038,
+        "train_rows": 26963
+      },
+      {
+        "feature": "vowel_ratio",
+        "from": 0.3,
+        "to": 0.45,
+        "points": -0.081,
+        "train_rows": 93435
+      },
+      {
+        "feature": "vowel_ratio",
+        "from": 0.45,
+        "to": 0.6,
+        "points": -0.08,
+        "train_rows": 30321
+      },
+      {
+        "feature": "vowel_ratio",
+        "from": 0.6,
+        "to": null,
+        "points": -0.098,
+        "train_rows": 3884
+      },
+      {
+        "feature": "is_ip",
+        "from": 0,
+        "to": 1,
+        "points": -1.47,
+        "train_rows": 167274
+      },
+      {
+        "feature": "is_ip",
+        "from": 1,
+        "to": null,
+        "points": 1.489,
+        "train_rows": 215
+      },
+      {
+        "feature": "has_punycode",
+        "from": 0,
+        "to": 1,
+        "points": -0.387,
+        "train_rows": 167387
+      },
+      {
+        "feature": "has_punycode",
+        "from": 1,
+        "to": null,
+        "points": 0.406,
+        "train_rows": 102
+      },
+      {
+        "feature": "private_suffix",
+        "from": 0,
+        "to": 1,
+        "points": -0.984,
+        "train_rows": 148108
+      },
+      {
+        "feature": "private_suffix",
+        "from": 1,
+        "to": null,
+        "points": 0.973,
+        "train_rows": 19381
+      },
+      {
+        "feature": "domain_sensitive",
+        "from": 0,
+        "to": 1,
+        "points": -1.141,
+        "train_rows": 164977
+      },
+      {
+        "feature": "domain_sensitive",
+        "from": 1,
+        "to": 2,
+        "points": 0.705,
+        "train_rows": 2446
+      },
+      {
+        "feature": "domain_sensitive",
+        "from": 2,
+        "to": null,
+        "points": 0.457,
+        "train_rows": 66
+      },
+      {
+        "feature": "tld_risk",
+        "from": 0,
+        "to": 0.2,
+        "points": -1.937,
+        "train_rows": 42218
+      },
+      {
+        "feature": "tld_risk",
+        "from": 0.2,
+        "to": 0.4,
+        "points": -1.127,
+        "train_rows": 97637
+      },
+      {
+        "feature": "tld_risk",
+        "from": 0.4,
+        "to": 0.6,
+        "points": -0.057,
+        "train_rows": 5662
+      },
+      {
+        "feature": "tld_risk",
+        "from": 0.6,
+        "to": 0.8,
+        "points": 0.829,
+        "train_rows": 4668
+      },
+      {
+        "feature": "tld_risk",
+        "from": 0.8,
+        "to": null,
+        "points": 2.302,
+        "train_rows": 17304
+      },
+      {
+        "feature": "n_subdomains",
+        "from": 0,
+        "to": 1,
+        "points": -0.302,
+        "train_rows": 164703
+      },
+      {
+        "feature": "n_subdomains",
+        "from": 1,
+        "to": 2,
+        "points": -0.505,
+        "train_rows": 2192
+      },
+      {
+        "feature": "n_subdomains",
+        "from": 2,
+        "to": 3,
+        "points": -0.926,
+        "train_rows": 142
+      },
+      {
+        "feature": "n_subdomains",
+        "from": 3,
+        "to": null,
+        "points": 1.754,
+        "train_rows": 452
+      },
+      {
+        "feature": "subdomain_len",
+        "from": 0,
+        "to": 1,
+        "points": -0.302,
+        "train_rows": 164703
+      },
+      {
+        "feature": "subdomain_len",
+        "from": 1,
+        "to": 8,
+        "points": -0.105,
+        "train_rows": 1198
+      },
+      {
+        "feature": "subdomain_len",
+        "from": 8,
+        "to": 16,
+        "points": -0.133,
+        "train_rows": 775
+      },
+      {
+        "feature": "subdomain_len",
+        "from": 16,
+        "to": 30,
+        "points": 0.388,
+        "train_rows": 491
+      },
+      {
+        "feature": "subdomain_len",
+        "from": 30,
+        "to": null,
+        "points": 0.172,
+        "train_rows": 322
+      },
+      {
+        "feature": "n_hyphens_sub",
+        "from": 0,
+        "to": 1,
+        "points": -0.841,
+        "train_rows": 166893
+      },
+      {
+        "feature": "n_hyphens_sub",
+        "from": 1,
+        "to": 2,
+        "points": 0.455,
+        "train_rows": 487
+      },
+      {
+        "feature": "n_hyphens_sub",
+        "from": 2,
+        "to": null,
+        "points": 0.405,
+        "train_rows": 109
+      },
+      {
+        "feature": "n_digits_sub",
+        "from": 0,
+        "to": 1,
+        "points": -1.25,
+        "train_rows": 167053
+      },
+      {
+        "feature": "n_digits_sub",
+        "from": 1,
+        "to": 4,
+        "points": 0.017,
+        "train_rows": 232
+      },
+      {
+        "feature": "n_digits_sub",
+        "from": 4,
+        "to": null,
+        "points": 1.253,
+        "train_rows": 204
+      },
+      {
+        "feature": "sub_sensitive",
+        "from": 0,
+        "to": 1,
+        "points": -0.471,
+        "train_rows": 167004
+      },
+      {
+        "feature": "sub_sensitive",
+        "from": 1,
+        "to": null,
+        "points": 0.491,
+        "train_rows": 485
+      },
+      {
+        "feature": "path_len",
+        "from": 0,
+        "to": 1,
+        "points": 0.103,
+        "train_rows": 160781
+      },
+      {
+        "feature": "path_len",
+        "from": 1,
+        "to": 10,
+        "points": 1.736,
+        "train_rows": 749
+      },
+      {
+        "feature": "path_len",
+        "from": 10,
+        "to": 25,
+        "points": 0.5,
+        "train_rows": 2619
+      },
+      {
+        "feature": "path_len",
+        "from": 25,
+        "to": 50,
+        "points": -0.191,
+        "train_rows": 2141
+      },
+      {
+        "feature": "path_len",
+        "from": 50,
+        "to": 100,
+        "points": -1.454,
+        "train_rows": 1040
+      },
+      {
+        "feature": "path_len",
+        "from": 100,
+        "to": null,
+        "points": -0.674,
+        "train_rows": 159
+      },
+      {
+        "feature": "path_depth",
+        "from": 0,
+        "to": 1,
+        "points": -0.351,
+        "train_rows": 160783
+      },
+      {
+        "feature": "path_depth",
+        "from": 1,
+        "to": 2,
+        "points": -1.103,
+        "train_rows": 1857
+      },
+      {
+        "feature": "path_depth",
+        "from": 2,
+        "to": 3,
+        "points": -0.611,
+        "train_rows": 2261
+      },
+      {
+        "feature": "path_depth",
+        "from": 3,
+        "to": 5,
+        "points": 0.218,
+        "train_rows": 1774
+      },
+      {
+        "feature": "path_depth",
+        "from": 5,
+        "to": null,
+        "points": 1.867,
+        "train_rows": 814
+      },
+      {
+        "feature": "query_len",
+        "from": 0,
+        "to": 1,
+        "points": -0.347,
+        "train_rows": 166155
+      },
+      {
+        "feature": "query_len",
+        "from": 1,
+        "to": 20,
+        "points": -0.269,
+        "train_rows": 380
+      },
+      {
+        "feature": "query_len",
+        "from": 20,
+        "to": 60,
+        "points": 0.294,
+        "train_rows": 625
+      },
+      {
+        "feature": "query_len",
+        "from": 60,
+        "to": null,
+        "points": 0.342,
+        "train_rows": 329
+      },
+      {
+        "feature": "n_params",
+        "from": 0,
+        "to": 1,
+        "points": -0.347,
+        "train_rows": 166155
+      },
+      {
+        "feature": "n_params",
+        "from": 1,
+        "to": 2,
+        "points": 0.255,
+        "train_rows": 683
+      },
+      {
+        "feature": "n_params",
+        "from": 2,
+        "to": 4,
+        "points": 0.757,
+        "train_rows": 534
+      },
+      {
+        "feature": "n_params",
+        "from": 4,
+        "to": null,
+        "points": -0.645,
+        "train_rows": 117
+      },
+      {
+        "feature": "n_digits_path",
+        "from": 0,
+        "to": 1,
+        "points": -0.643,
+        "train_rows": 164319
+      },
+      {
+        "feature": "n_digits_path",
+        "from": 1,
+        "to": 5,
+        "points": -0.465,
+        "train_rows": 1027
+      },
+      {
+        "feature": "n_digits_path",
+        "from": 5,
+        "to": 15,
+        "points": -1.216,
+        "train_rows": 1138
+      },
+      {
+        "feature": "n_digits_path",
+        "from": 15,
+        "to": null,
+        "points": 2.343,
+        "train_rows": 1005
+      },
+      {
+        "feature": "n_dots_path",
+        "from": 0,
+        "to": 1,
+        "points": -0.581,
+        "train_rows": 164699
+      },
+      {
+        "feature": "n_dots_path",
+        "from": 1,
+        "to": 2,
+        "points": -0.309,
+        "train_rows": 2244
+      },
+      {
+        "feature": "n_dots_path",
+        "from": 2,
+        "to": 3,
+        "points": 0.255,
+        "train_rows": 316
+      },
+      {
+        "feature": "n_dots_path",
+        "from": 3,
+        "to": null,
+        "points": 0.655,
+        "train_rows": 230
+      },
+      {
+        "feature": "n_special_path",
+        "from": 0,
+        "to": 1,
+        "points": 0.694,
+        "train_rows": 165889
+      },
+      {
+        "feature": "n_special_path",
+        "from": 1,
+        "to": 3,
+        "points": 0.641,
+        "train_rows": 832
+      },
+      {
+        "feature": "n_special_path",
+        "from": 3,
+        "to": 6,
+        "points": -0.791,
+        "train_rows": 530
+      },
+      {
+        "feature": "n_special_path",
+        "from": 6,
+        "to": null,
+        "points": -0.524,
+        "train_rows": 238
+      },
+      {
+        "feature": "path_sensitive",
+        "from": 0,
+        "to": 1,
+        "points": -1.638,
+        "train_rows": 166302
+      },
+      {
+        "feature": "path_sensitive",
+        "from": 1,
+        "to": 2,
+        "points": 0.253,
+        "train_rows": 644
+      },
+      {
+        "feature": "path_sensitive",
+        "from": 2,
+        "to": null,
+        "points": 1.404,
+        "train_rows": 543
+      },
+      {
+        "feature": "has_exec_ext",
+        "from": 0,
+        "to": 1,
+        "points": 0.02,
+        "train_rows": 167489
+      },
+      {
+        "feature": "has_exec_ext",
+        "from": 1,
+        "to": null,
+        "points": 0.0,
+        "train_rows": 0
+      },
+      {
+        "feature": "embedded_domain",
+        "from": 0,
+        "to": 1,
+        "points": -0.436,
+        "train_rows": 167059
+      },
+      {
+        "feature": "embedded_domain",
+        "from": 1,
+        "to": null,
+        "points": 0.456,
+        "train_rows": 430
+      },
+      {
+        "feature": "has_at",
+        "from": 0,
+        "to": 1,
+        "points": -0.968,
+        "train_rows": 167310
+      },
+      {
+        "feature": "has_at",
+        "from": 1,
+        "to": null,
+        "points": 0.988,
+        "train_rows": 179
+      },
+      {
+        "feature": "double_slash_path",
+        "from": 0,
+        "to": 1,
+        "points": -0.731,
+        "train_rows": 167465
+      },
+      {
+        "feature": "double_slash_path",
+        "from": 1,
+        "to": null,
+        "points": 0.751,
+        "train_rows": 24
+      }
+    ],
+    "intercept": 14.664,
+    "tlds_in_table": 562
+  }
+}

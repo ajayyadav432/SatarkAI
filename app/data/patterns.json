@@ -1,0 +1,576 @@
+{
+ "_note": "Rule groups for suspicious language. Weights were set by hand (not learned). Patterns are regular expressions, matched without regard to upper/lower case. 'en' = English, 'hinglish' = Hindi in Latin letters, 'hi' = Hindi in Devanagari.",
+ "negation": {
+  "_note": "For groups marked negatable, a match is ignored when it is negated: 'Do NOT share your OTP'.",
+  "before": "(?:\\b(?:do\\s+not|don'?t|dont|never|not|no\\s+one\\s+should|will\\s+never\\s+ask\\s+(?:you\\s+)?to|never\\s+ask\\s+(?:you\\s+)?to)\\s+(?:\\w+\\s+){0,2})$",
+  "inside": "\\b(?:do\\s+not|don'?t|dont|never|not)\\b|\\b(?:na|mat|nahi|nahin)\\b|(?:\\sन\\s|\\sना\\s|\\sमत\\s|नहीं)",
+  "after": "^[^.!?।\\n]{0,25}?(?:\\b(?:mat|na|nahi|nahin)\\b|(?<!\\S)(?:न|ना|मत)(?!\\S)|नहीं)"
+ },
+ "groups": [
+  {
+   "id": "urgency",
+   "title": "Creates time pressure",
+   "weight": 0.25,
+   "max_weight": 0.4,
+   "category": null,
+   "explain": "Scammers rush you so that you act before you think or check.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\burgent(?:ly)?\\b",
+     "\\bimmediate(?:ly)?\\b",
+     "\\bas soon as possible\\b|\\basap\\b",
+     "\\bwithin\\s+(?:the\\s+)?(?:next\\s+)?\\d{1,3}\\s*(?:hours?|hrs?|minutes?|mins?|days?)\\b",
+     "\\b(?:today|tonight)\\s+(?:only|itself|at\\s+\\d{1,2}(?:[.:]\\d{2})?\\s*(?:am|pm)?)",
+     "\\bby\\s+(?:today|tonight|tomorrow|midnight|end\\s+of\\s+(?:the\\s+)?day)\\b",
+     "\\b(?:expires?|expiring|expired)\\s+(?:today|tonight|soon|in\\s+\\d)",
+     "\\b(?:last|final)\\s+(?:chance|warning|notice|reminder|call|day|date)\\b",
+     "\\bact\\s+(?:now|fast|quickly|immediately)\\b",
+     "\\bhurry\\b|\\bdon'?t\\s+delay\\b|\\bdo\\s+not\\s+delay\\b|\\bwithout\\s+(?:any\\s+)?delay\\b|\\bright\\s+(?:away|now)\\b",
+     "\\blimited\\s+(?:time|period|offer|seats|slots)\\b",
+     "\\bbefore\\s+it'?s?\\s+too\\s+late\\b",
+     "\\bvalid\\s+(?:for\\s+)?(?:only\\s+)?\\d{1,3}\\s*(?:hours?|hrs?|minutes?|mins?)\\b",
+     "\\bvalid\\s+(?:only\\s+)?(?:till|until|for)\\s+today\\b"
+    ],
+    "hinglish": [
+     "\\bturant\\b",
+     "\\bjaldi\\b",
+     "\\bfauran\\b",
+     "\\babhi\\s+(?:ke\\s+abhi|hi|karo|karein|kare|call)\\b",
+     "\\baaj\\s+(?:hi|raat|tak)\\b",
+     "\\b\\d{1,2}\\s*(?:ghante|ghanto)\\b",
+     "\\bantim\\s+(?:chetavani|suchna|mauka)\\b"
+    ],
+    "hi": [
+     "तुरंत",
+     "तुरन्त",
+     "फौरन",
+     "शीघ्र",
+     "जल्द से जल्द",
+     "आज ही",
+     "आज रात",
+     "\\d{1,2}\\s*घंटे",
+     "अंतिम (?:चेतावनी|सूचना|मौका)",
+     "अभी (?:करें|अपडेट|क्लिक|कॉल)"
+    ]
+   }
+  },
+  {
+   "id": "threat",
+   "title": "Threatens a loss or punishment",
+   "weight": 0.35,
+   "max_weight": 0.5,
+   "category": null,
+   "explain": "Fear of losing an account, money or freedom is used to stop you from checking the facts.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:account|a/c|card|sim|number|service|wallet|upi|net\\s?banking|connection|id|access|profile|policy)\\b[^.!?\\n]{0,40}\\b(?:blocked|suspended|deactivated|frozen|closed|restricted|locked|disabled|terminated|disconnected|cancelled|canceled|deleted|on\\s+hold|limited)\\b",
+     "\\b(?:will|shall|would|to)\\s+be\\s+(?:blocked|suspended|deactivated|frozen|closed|restricted|locked|disabled|terminated|disconnected|cancelled|canceled|deleted)\\b",
+     "\\b(?:has|have)\\s+been\\s+(?:blocked|suspended|deactivated|frozen|restricted|locked|disabled|compromised|hacked)\\b",
+     "\\b(?:unauthori[sz]ed|suspicious|unusual|fraudulent)\\s+(?:activity|login|log-in|sign-in|access|transaction|attempt)s?\\b",
+     "\\blegal\\s+action\\b|\\barrest\\s+warrant\\b|\\bwarrant\\b|\\bfir\\b[^.\\n]{0,30}\\b(?:registered|lodged|filed)\\b|\\bcase\\s+(?:has\\s+been\\s+)?(?:registered|filed)\\b|\\bcourt\\s+(?:notice|summons?|case|order)\\b",
+     "\\b(?:penalty|fine)\\s+of\\b|\\bpay\\s+(?:a\\s+)?(?:penalty|fine)\\b",
+     "\\bif\\s+you\\s+(?:fail|do\\s+not|don'?t)\\b[^.\\n]{0,60}\\b(?:block|suspend|deactivat|clos|terminat|disconnect|legal|penalt|lose|lost)\\w*",
+     "\\bsecurity\\s+(?:alert|breach|warning)\\b|\\bis\\s+at\\s+risk\\b"
+    ],
+    "hinglish": [
+     "\\b(?:block|band|bandh|suspend|deactivate)\\s+(?:ho|kar|kiya)\\s*(?:jayega|jaega|jaayega|jayegi|gaya|gya|diya|denge|jaenge)?\\b",
+     "\\bkat\\s+(?:jayega|jaega|jayegi|diya\\s+jayega)\\b",
+     "\\bkanooni\\s+(?:karwai|karyawahi|karwahi)\\b",
+     "\\bgiraftar\\w*\\b",
+     "\\bjurmana\\b"
+    ],
+    "hi": [
+     "ब्लॉक",
+     "बंद (?:हो|कर)",
+     "निलंबित",
+     "निष्क्रिय",
+     "कानूनी (?:कार्रवाई|कार्यवाही)",
+     "गिरफ्तार",
+     "जुर्माना",
+     "काट दि",
+     "कट जाएग"
+    ]
+   }
+  },
+  {
+   "id": "credential_request",
+   "title": "Asks for secret details",
+   "weight": 0.5,
+   "max_weight": 0.65,
+   "category": "Credential phishing",
+   "explain": "No bank, company or government office asks for an OTP, PIN, password or CVV by message or call.",
+   "negatable": true,
+   "patterns": {
+    "en": [
+     "\\b(?:share|send|provide|enter|submit|confirm|verify|update|give|tell|forward|reply\\s+with|type)\\b[^.!?\\n]{0,40}\\b(?:otp|one[\\s-]?time\\s+password|pin|mpin|upi\\s+pin|atm\\s+pin|password|passcode|cvv|cvc|card\\s+(?:number|details|no)|debit\\s+card|credit\\s+card|account\\s+(?:number|details|no)|bank\\s+details|net\\s?banking|login\\s+(?:details|credentials|id)|user\\s?(?:name|id)|credentials|aadhaar|aadhar|pan\\s+(?:number|card|details|no)|date\\s+of\\s+birth|dob|ssn|social\\s+security|security\\s+(?:code|answer)|verification\\s+code|expiry\\s+date)\\b",
+     "\\b(?:otp|pin|cvv|password|verification\\s+code)\\b[^.!?\\n]{0,30}\\b(?:share|send|tell|provide|forward)\\b",
+     "\\b(?:log\\s?in|sign\\s?in)\\s+(?:to|and)\\s+(?:verify|confirm|update|restore|unlock|secure)\\b",
+     "\\b(?:verify|confirm|validate|update|re-?activate|restore|unlock)\\s+your\\s+(?:account|identity|details|information|profile|card|payment|billing)\\b"
+    ],
+    "hinglish": [
+     "\\b(?:otp|pin|cvv|password)\\s+(?:batao|bataye|batayen|bataiye|bata\\s+do|bhejo|bheje|bhej\\s+do|share\\s+kar\\w*|daal\\w*|dale|enter\\s+kar\\w*)\\b",
+     "\\b(?:apna|apni|aapka|aapki)\\s+(?:otp|pin|cvv|password|card|aadhaar|aadhar|pan)\\b"
+    ],
+    "hi": [
+     "(?:ओटीपी|पिन|पासवर्ड|सीवीवी|कार्ड नंबर|खाता संख्या)[^।.\\n]{0,30}(?:बताएं|बताये|बताइए|भेजें|साझा करें|शेयर करें|दर्ज करें|डालें)",
+     "(?:अपना|अपनी)\\s+(?:ओटीपी|पिन|पासवर्ड|सीवीवी|आधार|पैन)"
+    ]
+   }
+  },
+  {
+   "id": "reward",
+   "title": "Promises a prize or reward",
+   "weight": 0.35,
+   "max_weight": 0.5,
+   "category": "Lottery / prize scam",
+   "explain": "You cannot win a lottery or contest that you never entered.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\bcongratulations?\\b|\\bcongrats\\b",
+     "\\byou(?:'ve|\\s+have)?\\s+(?:been\\s+)?(?:won|chosen|awarded)\\b|\\bselected\\s+to\\s+(?:receive|win|get)\\b|\\byou\\s+(?:are|r)\\s+(?:a\\s+|the\\s+|our\\s+)?(?:lucky\\s+)?winner\\b",
+     "\\b(?:lucky\\s+)?winner\\b|\\blucky\\s+draw\\b",
+     "\\blottery\\b|\\bjackpot\\b|\\bkbc\\b|\\bkaun\\s+banega\\s+crorepati\\b",
+     "\\b(?:cash\\s+)?prize\\b|\\bfree\\s+gift\\b|\\bgift\\s+(?:card|voucher|hamper)\\b|\\bbonus\\s+of\\b|\\bcash\\s?back\\s+of\\b",
+     "\\bclaim\\s+(?:your|it|now|the|ur)\\b|\\bto\\s+claim\\b|\\bredeem\\s+(?:your|now|it|points)\\b",
+     "\\b(?:reward|loyalty)\\s+points?\\b[^.\\n]{0,40}\\b(?:expir|redeem|claim|credit)\\w*",
+     "\\bfree\\s+(?:iphone|recharge|data|laptop|mobile|phone|entry|membership|trial|tickets?)\\b",
+     "\\b(?:won|win|winning)\\s+(?:a\\s+|an\\s+|rs\\.?|inr|₹|\\$|£|upto|up\\s+to|cash)"
+    ],
+    "hinglish": [
+     "\\bbadhai\\s+ho\\b",
+     "\\b(?:aapne|apne|aap)\\s+(?:ne\\s+)?(?:jeeta|jita|jeete|jeet\\s+(?:liya|liye|gaye))\\b",
+     "\\b(?:inaam|inam|puraskar)\\b",
+     "\\blottery\\s+(?:lagi|lag\\s+gayi|nikli)\\b",
+     "\\bmuft\\b"
+    ],
+    "hi": [
+     "बधाई",
+     "लॉटरी",
+     "इनाम",
+     "पुरस्कार",
+     "जीत(?:ा|े|ी| लिया| गए)",
+     "मुफ्त",
+     "लकी ड्रा",
+     "केबीसी"
+    ]
+   }
+  },
+  {
+   "id": "payment_request",
+   "title": "Asks you to pay or send money",
+   "weight": 0.35,
+   "max_weight": 0.5,
+   "category": null,
+   "explain": "A fee to receive a prize, parcel, job or refund is the core of advance-fee fraud.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:pay|send|transfer|deposit|remit)\\s+(?:us\\s+|me\\s+|only\\s+|just\\s+|a\\s+|an\\s+|the\\s+)?(?:(?:rs\\.?|inr|₹|\\$|£|usd)\\s?)?\\d[\\d,]*",
+     "\\b(?:processing|registration|clearance|customs|handling|delivery|activation|verification|security|service|convenience|legal|gst|joining|token)\\s+(?:fee|fees|charge|charges|deposit|amount|duty)\\b",
+     "\\b(?:advance|upfront|refundable)\\s+(?:payment|fee|deposit|amount)\\b",
+     "\\bpay\\s+(?:now|immediately|today|online|via|through|using|the\\s+(?:fee|amount|charges|balance|fine|bill|dues))\\b",
+     "\\bscan\\s+(?:the\\s+|this\\s+|below\\s+|attached\\s+)?(?:qr|code)\\b",
+     "\\b(?:enter|use|put)\\s+(?:your\\s+)?upi\\s+pin\\s+to\\s+(?:receive|get|accept|collect)\\b",
+     "\\b(?:buy|purchase|get)\\s+(?:\\w+\\s+){0,3}gift\\s+cards?\\b|\\b(?:itunes|google\\s+play|steam)\\s+(?:gift\\s+)?cards?\\b",
+     "\\bwestern\\s+union\\b|\\bmoneygram\\b|\\bwire\\s+transfer\\b|\\bbitcoin\\s+(?:address|wallet)\\b",
+     "\\bpending\\s+(?:dues|payment|amount|bill|challan)\\b|\\boutstanding\\s+(?:dues|amount|balance|bill)\\b|\\boverdue\\b"
+    ],
+    "hinglish": [
+     "\\b(?:paise|paisa|rupaye|rupay|amount|payment)\\s+(?:bhejo|bhej\\s+do|bhejiye|bheje|transfer\\s+kar\\w*|jama\\s+kar\\w*|daal\\w*)\\b",
+     "\\b(?:shulk|fees?)\\s+(?:jama|bhar\\w*)\\b"
+    ],
+    "hi": [
+     "पैसे भेज",
+     "भुगतान कर",
+     "शुल्क",
+     "राशि जमा",
+     "रुपये जमा",
+     "पेमेंट कर",
+     "क्यूआर कोड"
+    ]
+   }
+  },
+  {
+   "id": "kyc",
+   "title": "KYC / account update demand",
+   "weight": 0.4,
+   "max_weight": 0.5,
+   "category": "KYC / account update",
+   "explain": "Banks do not ask you to finish KYC through a link in a message.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:re-?|e-?|c-?)?kyc\\b",
+     "\\b(?:pan|aadhaar|aadhar)\\s*(?:card|number|no\\.?)?\\s*(?:is\\s+|has\\s+)?(?:not\\s+(?:been\\s+)?(?:updated?|linked|verified|seeded)|expired|pending|mandatory|required)\\b",
+     "\\b(?:update|link|verify|submit)\\s+(?:your\\s+)?(?:pan|aadhaar|aadhar)\\b",
+     "\\b(?:sim|esim|e-sim)\\s*(?:card)?\\b[^.\\n]{0,40}\\b(?:block|deactivat|suspend|expir|verification|5g\\s+upgrade)\\w*",
+     "\\baccount\\s+(?:verification|updation|re-?activation)\\b"
+    ],
+    "hinglish": [
+     "\\b(?:pan|aadhaar|aadhar)\\s+(?:card\\s+)?(?:update|link)\\s+kar\\w*\\b"
+    ],
+    "hi": [
+     "केवाईसी",
+     "के\\.?वाई\\.?सी",
+     "(?:पैन|आधार)[^।.\\n]{0,20}(?:अपडेट|लिंक|सत्यापित)",
+     "खाता अपडेट"
+    ]
+   }
+  },
+  {
+   "id": "link_action",
+   "title": "Pushes you to open a link or install something",
+   "weight": 0.15,
+   "max_weight": 0.25,
+   "category": null,
+   "explain": "The message exists to move you to a page or app the sender controls.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:click|tap|press)\\s+(?:on\\s+)?(?:the\\s+|this\\s+|below\\s+|given\\s+|following\\s+)*(?:link|here|below|button|url)\\b",
+     "\\b(?:visit|open|go\\s+to|follow|use|check)\\s+(?:the\\s+|this\\s+|below\\s+|given\\s+|following\\s+|our\\s+)*(?:link|url|website|site|portal)\\b",
+     "\\b(?:link|url)\\s+(?:below|given|above|attached|here)\\b",
+     "\\b(?:download|install)\\s+(?:the\\s+|this\\s+|our\\s+|below\\s+|attached\\s+|official\\s+|new\\s+|latest\\s+)*(?:app|apk|application|file|attachment|software)\\b",
+     "\\b(?:log\\s?in|sign\\s?in|verify|update|register|apply|claim|track|reschedule)\\s+(?:here|now|at|on|via|through|using)\\b",
+     "\\bopen\\s+(?:the\\s+)?attach(?:ed|ment)\\b"
+    ],
+    "hinglish": [
+     "\\blink\\s+(?:par|pe|ko)\\s+(?:click|tap|dabay\\w*|open)\\b",
+     "\\b(?:niche|neeche)\\s+(?:diye|diya|di)\\s+(?:gaye\\s+|gaya\\s+|gayi\\s+|hue\\s+)?link\\b",
+     "\\bclick\\s+kar\\w*\\b",
+     "\\bapp\\s+(?:download|install)\\s+kar\\w*\\b"
+    ],
+    "hi": [
+     "लिंक पर क्लिक",
+     "यहां क्लिक",
+     "यहाँ क्लिक",
+     "नीचे दिए गए लिंक",
+     "लिंक (?:खोलें|दबाएं|पर जाएं)",
+     "क्लिक करें",
+     "ऐप डाउनलोड",
+     "डाउनलोड करें"
+    ]
+   }
+  },
+  {
+   "id": "courier",
+   "title": "Parcel or delivery problem",
+   "weight": 0.3,
+   "max_weight": 0.45,
+   "category": "Courier / delivery scam",
+   "explain": "Fake 'delivery failed' messages collect card details through a small re-delivery fee.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:parcel|package|shipment|courier|consignment|delivery)\\b[^.!?\\n]{0,50}\\b(?:held|on\\s+hold|pending|failed|undelivered|unable|could\\s+not\\s+be\\s+delivered|returned|stuck|seized|detained|incomplete|incorrect)\\b",
+     "\\b(?:incomplete|incorrect|wrong|missing|invalid)\\s+(?:delivery\\s+|shipping\\s+)?address\\b|\\baddress\\s+(?:is\\s+)?(?:incomplete|incorrect|missing|invalid|not\\s+clear)\\b",
+     "\\bdelivery\\s+(?:attempt|failed|fee|charges?)\\b|\\bre-?schedule\\s+(?:your\\s+|the\\s+)?delivery\\b|\\bredelivery\\b",
+     "\\b(?:update|confirm)\\s+(?:your\\s+)?(?:delivery\\s+|shipping\\s+)?address\\b",
+     "\\bcustoms?\\s+(?:clearance|duty|department|officer|office)\\b|\\bparcel\\s+(?:contains|containing)\\b"
+    ],
+    "hinglish": [
+     "\\b(?:parcel|courier|package)\\s+(?:ruka|atka|pending|wapas|return|hold)\\b",
+     "\\b(?:pata|address)\\s+(?:galat|adhura)\\b"
+    ],
+    "hi": [
+     "(?:पार्सल|कूरियर|डिलीवरी)[^।.\\n]{0,40}(?:रुक|रोक|लंबित|वापस|असफल|जब्त|पता)",
+     "पता (?:अधूरा|गलत)"
+    ]
+   }
+  },
+  {
+   "id": "job",
+   "title": "Easy job or task offer",
+   "weight": 0.35,
+   "max_weight": 0.5,
+   "category": "Job / task scam",
+   "explain": "High pay for simple online tasks is bait; victims are later asked to deposit money.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\bwork\\s+from\\s+home\\b|\\bpart[\\s-]?time\\s+(?:job|work|income|opportunity)\\b|\\bonline\\s+(?:job|work|earning|income)\\b|\\bhome\\s+based\\s+(?:job|work)\\b|\\b(?:data\\s+entry|typing)\\s+(?:job|work)\\b",
+     "\\bearn\\s+(?:up\\s?to\\s+|upto\\s+|extra\\s+|daily\\s+)?(?:rs\\.?|inr|₹|\\$|£)\\s?\\d[\\d,]*",
+     "\\b(?:rs\\.?|inr|₹|\\$|£)\\s?\\d[\\d,]*(?:\\s?(?:-|to)\\s?(?:rs\\.?|₹)?\\s?\\d[\\d,]*)?\\s*(?:per|a|/|every|each)\\s*(?:day|week|hour|hr)\\b",
+     "\\b(?:daily|weekly)\\s+(?:income|salary|payment|payout|earning|wages)\\b",
+     "\\bno\\s+(?:experience|investment|interview|qualification)\\s+(?:needed|required|necessary)\\b|\\bwithout\\s+(?:any\\s+)?(?:investment|interview|experience)\\b",
+     "\\b(?:like|subscribe|review|rate)\\s+(?:\\w+\\s+){0,3}(?:youtube|videos?|hotels?|products?|google\\s+maps?|restaurants?|channels?)\\b",
+     "\\b(?:prepaid|pre-paid|paid)\\s+tasks?\\b|\\bsimple\\s+tasks?\\b|\\bcomplete\\s+(?:\\w+\\s+){0,2}tasks?\\b",
+     "\\bwe\\s+are\\s+hiring\\b|\\b(?:has|have)\\s+been\\s+shortlisted\\b|\\byour\\s+(?:resume|profile|cv)\\s+(?:has\\s+been\\s+|is\\s+)?selected\\b|\\bselected\\s+for\\s+(?:the\\s+|a\\s+|an\\s+|our\\s+)?(?:\\w+\\s+)?(?:job|position|role|post|interview)\\b|\\bjob\\s+offer\\b|\\binterview\\s+(?:call|letter)\\b",
+     "\\bearn\\s+(?:money|income|cash)\\s+(?:online|from\\s+home|daily|easily|fast)\\b|\\bextra\\s+income\\b|\\bpassive\\s+income\\b"
+    ],
+    "hinglish": [
+     "\\bghar\\s+baithe\\b",
+     "\\b(?:roz|rozana|har\\s+din)\\s+(?:kamao|kamaye|kamaiye|\\d)",
+     "\\bpaise\\s+kama\\w*\\b"
+    ],
+    "hi": [
+     "घर बैठे",
+     "पैसे कमा",
+     "पार्ट टाइम",
+     "रोज़ाना कमा",
+     "रोज कमा"
+    ]
+   }
+  },
+  {
+   "id": "bill",
+   "title": "Utility disconnection threat",
+   "weight": 0.4,
+   "max_weight": 0.5,
+   "category": "Utility bill scam",
+   "explain": "Electricity boards do not threaten disconnection 'tonight' and ask you to call a mobile number.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:electricity|power|light|gas|water|broadband|internet)\\s+(?:connection\\s+|supply\\s+|service\\s+|meter\\s+)?(?:will\\s+be|shall\\s+be|is\\s+going\\s+to\\s+be|has\\s+been)\\s+(?:disconnected|cut|cut\\s+off|stopped|terminated|suspended)\\b",
+     "\\b(?:electricity|power|light|gas)\\s+(?:bill|officer|office|department|board)\\b",
+     "\\b(?:previous|last)\\s+month(?:'s)?\\s+bill\\b|\\bbill\\s+(?:was\\s+|is\\s+|has\\s+)?(?:not\\s+(?:been\\s+)?(?:updated?|paid)|unpaid|pending|overdue)\\b",
+     "\\bdisconnect(?:ed|ion)\\b[^.\\n]{0,30}\\b(?:tonight|today|\\d{1,2}[.:]\\d{2}\\s*(?:pm|am))"
+    ],
+    "hinglish": [
+     "\\bbijli\\b[^.\\n]{0,40}\\b(?:kat|kaat|bill|connection|vibhag|officer)\\w*",
+     "\\b(?:light|connection|line)\\s+(?:kat|kaat|cut)\\s+(?:jayegi|jayega|jaegi|di\\s+jayegi|diya\\s+jayega|denge)\\b"
+    ],
+    "hi": [
+     "बिजली[^।.\\n]{0,40}(?:काट|कट|बिल|कनेक्शन|विभाग|अधिकारी)",
+     "कनेक्शन काट",
+     "बिल (?:बकाया|अपडेट)"
+    ]
+   }
+  },
+  {
+   "id": "authority",
+   "title": "Claims to be police or a government agency",
+   "weight": 0.45,
+   "max_weight": 0.6,
+   "category": "Authority impersonation / digital arrest",
+   "explain": "Police and agencies do not investigate, arrest or collect money over a call or chat. 'Digital arrest' does not exist in law.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\bdigital\\s+arrest\\b",
+     "\\b(?:cbi|ncb|narcotics|enforcement\\s+directorate|cyber\\s+(?:cell|crime|police)|crime\\s+branch|customs\\s+(?:officer|department)|police\\s+(?:station|officer|department|headquarters)|trai|telecom\\s+(?:department|authority)|supreme\\s+court|high\\s+court|interpol|fbi|irs|hmrc)\\b",
+     "\\bmoney\\s+laundering\\b|\\bdrugs?\\s+(?:parcel|found|trafficking|case)\\b|\\billegal\\s+(?:activity|activities|items?|parcel|transactions?|goods|sim)\\b",
+     "\\byour\\s+(?:aadhaar|aadhar|pan|sim|mobile\\s+number|number|parcel|bank\\s+account|identity|id|name)\\b[^.\\n]{0,40}\\b(?:used|misused|linked|involved|registered|found)\\b[^.\\n]{0,40}\\b(?:illegal|crime|criminal|fraud|laundering|drugs?|case|harass\\w*)\\b",
+     "\\b(?:inspector|sub[\\s-]?inspector|commissioner|dcp|acp)\\b",
+     "\\b(?:under|for)\\s+investigation\\b|\\binterrogation\\b",
+     "\\bdo\\s+not\\s+(?:tell|inform|disclose)\\s+(?:this\\s+to\\s+)?(?:anyone|anybody|your\\s+family)\\b|\\bkeep\\s+(?:this|it)\\s+(?:confidential|secret)\\b"
+    ],
+    "hinglish": [
+     "\\bpolice\\s+(?:thana|case)\\b",
+     "\\b(?:case|fir)\\s+(?:darj|register|file)\\b",
+     "\\bgiraftari\\b"
+    ],
+    "hi": [
+     "डिजिटल अरेस्ट",
+     "सीबीआई",
+     "पुलिस",
+     "साइबर (?:सेल|क्राइम)",
+     "मनी लॉन्ड्रिंग",
+     "मामला दर्ज",
+     "एफआईआर",
+     "नारकोटिक्स",
+     "कस्टम (?:अधिकारी|विभाग)"
+    ]
+   }
+  },
+  {
+   "id": "refund",
+   "title": "Offers an unexpected refund",
+   "weight": 0.3,
+   "max_weight": 0.45,
+   "category": "Refund / tax scam",
+   "explain": "A refund you did not ask for is used to collect bank details.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:income\\s+)?tax\\s+refund\\b|\\brefund\\s+(?:of\\s+)?(?:rs\\.?|inr|₹|\\$|£)\\s?\\d|\\brefund\\s+(?:is\\s+|has\\s+been\\s+)?(?:approved|pending|initiated|processed|due|available|waiting)\\b",
+     "\\b(?:claim|receive|get|collect)\\s+(?:your\\s+)?refund\\b|\\beligible\\s+for\\s+(?:a\\s+)?(?:tax\\s+)?refund\\b|\\bcompensation\\s+of\\b|\\bsubsidy\\s+(?:of|amount|credited|approved)\\b"
+    ],
+    "hinglish": [
+     "\\brefund\\s+(?:milega|mil\\s+jayega|aaya|pending)\\b"
+    ],
+    "hi": [
+     "रिफंड",
+     "धनवापसी",
+     "सब्सिडी"
+    ]
+   }
+  },
+  {
+   "id": "investment",
+   "title": "Promises guaranteed profit",
+   "weight": 0.35,
+   "max_weight": 0.5,
+   "category": "Investment / crypto scam",
+   "explain": "Guaranteed or very high returns do not exist in real investing.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:guaranteed|assured|fixed|risk[\\s-]?free|100\\s?%|sure[\\s-]?shot)\\s+(?:returns?|profits?|income|earnings?)\\b",
+     "\\bdouble\\s+(?:your\\s+)?(?:money|investment|income)\\b|\\b\\d{2,4}\\s?%\\s+(?:returns?|profit|gain)s?\\b|\\b(?:daily|weekly|monthly)\\s+(?:returns?|profits?)\\b",
+     "\\b(?:crypto|bitcoin|btc|usdt|ethereum|forex|binary\\s+options?|trading|stock\\s+market|share\\s+market|ipo)\\b[^.\\n]{0,60}\\b(?:profit|returns?|invest\\w*|earn\\w*|tips?|signals?|guaranteed)\\b",
+     "\\b(?:invest|deposit)\\s+(?:just\\s+|only\\s+|min(?:imum)?\\s+)?(?:rs\\.?|inr|₹|\\$)?\\s?\\d[\\d,]*[^.\\n]{0,40}\\b(?:get|earn|receive|return|profit|become)\\b",
+     "\\b(?:stock|trading|investment)\\s+tips?\\b|\\b(?:vip|premium)\\s+(?:group|channel|signals?)\\b|\\bjoin\\s+(?:our\\s+|my\\s+)?(?:whatsapp|telegram)\\s+(?:group|channel)\\b|\\bmulti[\\s-]?bagger\\b"
+    ],
+    "hinglish": [
+     "\\bpaisa\\s+double\\b",
+     "\\b(?:invest|nivesh)\\s+kar\\w*\\b[^.\\n]{0,40}\\b(?:profit|munafa|double|return)\\b"
+    ],
+    "hi": [
+     "पैसा डबल",
+     "निवेश[^।.\\n]{0,40}(?:मुनाफा|लाभ|डबल|रिटर्न)",
+     "गारंटीड (?:रिटर्न|मुनाफा)",
+     "शेयर मार्केट"
+    ]
+   }
+  },
+  {
+   "id": "remote_access",
+   "title": "Tech-support or remote-access request",
+   "weight": 0.5,
+   "max_weight": 0.6,
+   "category": "Tech support / remote access scam",
+   "explain": "Screen-sharing apps give a stranger full control of your phone, including banking apps and OTPs.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:anydesk|any\\s+desk|teamviewer|team\\s+viewer|quicksupport|quick\\s+support|rustdesk|ultraviewer|airdroid|screen\\s?share|screen\\s+sharing|remote\\s+(?:access|desktop|support|control))\\b",
+     "\\b(?:virus|malware|trojan|spyware)\\s+(?:detected|found|infected|alert|warning)\\b|\\byour\\s+(?:computer|pc|device|phone|system|mac)\\s+(?:is|has\\s+been|may\\s+be)\\s+(?:infected|hacked|compromised|at\\s+risk|blocked|locked)\\b",
+     "\\b(?:tech(?:nical)?|microsoft|windows|apple)\\s+support\\b[^.\\n]{0,40}\\b(?:call|contact|toll[\\s-]?free|helpline|number)\\b|\\bcall\\s+(?:microsoft|windows|apple|tech(?:nical)?)\\s+support\\b",
+     "\\b(?:subscription|membership|antivirus|norton|mcafee|geek\\s+squad)\\b[^.\\n]{0,50}\\b(?:renew(?:ed|al)?|auto[\\s-]?renew\\w*|charged|debited|deducted)\\b"
+    ],
+    "hinglish": [],
+    "hi": [
+     "एनीडेस्क",
+     "टीमव्यूअर",
+     "स्क्रीन शेयर",
+     "रिमोट एक्सेस"
+    ]
+   }
+  },
+  {
+   "id": "family_emergency",
+   "title": "Pretends to be someone you know",
+   "weight": 0.35,
+   "max_weight": 0.5,
+   "category": "Impersonation of a known person",
+   "explain": "A 'new number' plus an urgent request for money is a classic impersonation. Call the old number to check.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:hi|hey|hello)\\s+(?:mum|mom|mummy|dad|papa|bro|sis|beta|uncle|aunty|grandma|grandpa)\\b",
+     "\\b(?:this\\s+is|it'?s|its)\\s+my\\s+new\\s+(?:number|phone|no)\\b|\\bmy\\s+(?:phone|mobile)\\s+(?:is\\s+)?(?:broke|broken|lost|stolen|damaged|dead|not\\s+working)\\b|\\bsave\\s+(?:this|my\\s+new)\\s+number\\b|\\btemporary\\s+number\\b",
+     "\\b(?:i'?m|i\\s+am)\\s+(?:in\\s+(?:trouble|hospital|jail|a\\s+meeting|an\\s+emergency)|stuck|stranded)\\b|\\bneed\\s+(?:some\\s+)?(?:money|cash|help|a\\s+favou?r)\\s+(?:urgently|asap|immediately|right\\s+now|now)\\b",
+     "\\bcan\\s+you\\s+(?:send|transfer|lend|pay|gpay|paytm|do\\s+me\\s+a\\s+favou?r)\\b|\\bare\\s+you\\s+(?:available|at\\s+your\\s+desk)\\s*\\?",
+     "\\bi(?:'ll|\\s+will)\\s+(?:return|pay\\s+(?:you\\s+)?back|repay)\\s+(?:it\\s+)?(?:by\\s+)?(?:tomorrow|tonight|evening|soon|later)\\b"
+    ],
+    "hinglish": [
+     "\\b(?:mera|meri)\\s+(?:naya|nayi|new)\\s+(?:number|phone|no)\\b",
+     "\\bpaise\\s+(?:chahiye|ki\\s+zaroorat|bhej\\s+de|udhar)\\b"
+    ],
+    "hi": [
+     "मेरा नया नंबर",
+     "पैसों की (?:जरूरत|ज़रूरत)",
+     "पैसे चाहिए",
+     "उधार"
+    ]
+   }
+  },
+  {
+   "id": "loan",
+   "title": "Instant or pre-approved loan offer",
+   "weight": 0.3,
+   "max_weight": 0.45,
+   "category": "Loan scam",
+   "explain": "Unrequested loan offers lead to fee fraud or to predatory loan apps.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:pre[\\s-]?approved|instant|quick|easy|emergency|low[\\s-]?interest)\\s+loan\\b",
+     "\\bloan\\s+(?:of\\s+)?(?:rs\\.?|inr|₹|\\$)?\\s?\\d[\\d,]*\\s*(?:lakhs?|k|crore)?\\s+(?:is\\s+|has\\s+been\\s+)?(?:approved|sanctioned|credited|available|ready)\\b|\\bloan\\s+(?:approved|sanctioned|without)\\b",
+     "\\bno\\s+(?:cibil|credit\\s+check|documents?|paperwork|collateral)\\b|\\b(?:low|bad|poor)\\s+cibil\\b",
+     "\\bcredit\\s+(?:limit|card)\\s+(?:increase|upgrade|approved|pre[\\s-]?approved)\\b"
+    ],
+    "hinglish": [
+     "\\bloan\\s+(?:chahiye|milega|manzoor)\\b"
+    ],
+    "hi": [
+     "लोन (?:स्वीकृत|मंजूर|चाहिए|पाएं)",
+     "तुरंत लोन",
+     "ऋण स्वीकृत"
+    ]
+   }
+  },
+  {
+   "id": "extortion",
+   "title": "Blackmail or extortion",
+   "weight": 0.55,
+   "max_weight": 0.65,
+   "category": "Extortion / blackmail",
+   "explain": "Mass blackmail e-mails claim to have recordings they do not have. Do not pay.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\bi\\s+(?:have\\s+)?(?:recorded|hacked|gained\\s+access|got\\s+access|have\\s+access|made\\s+a\\s+video)\\b|\\byour\\s+(?:webcam|browsing\\s+history|private\\s+(?:photos|videos|data))\\b",
+     "\\b(?:leak|publish|expose)\\s+(?:your\\s+|the\\s+|this\\s+)?(?:video|photos?|pictures?|footage|recording|nudes?)\\b",
+     "\\b(?:pay|send)\\s+(?:me\\s+)?(?:\\$|usd)?\\s?\\d[\\d,]*\\s+(?:in|worth\\s+of|via)\\s+(?:bitcoin|btc|crypto|usdt)\\b|\\byou\\s+have\\s+(?:24|48|72)\\s+hours\\s+to\\s+pay\\b"
+    ],
+    "hinglish": [
+     "\\bvideo\\s+viral\\s+kar\\w*\\b"
+    ],
+    "hi": [
+     "वीडियो वायरल"
+    ]
+   }
+  },
+  {
+   "id": "generic_greeting",
+   "title": "Generic greeting instead of your name",
+   "weight": 0.1,
+   "max_weight": 0.1,
+   "category": null,
+   "explain": "A real provider usually knows your name. Mass messages say 'Dear customer'.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\bdear\\s+(?:valued\\s+|esteemed\\s+|respected\\s+|\\w{2,10}\\s+)?(?:customer|user|member|client|account\\s?holder|card\\s?holder|beneficiary|winner|subscriber|taxpayer|applicant|candidate)\\b",
+     "\\bdear\\s+sir\\s*(?:/|or)\\s*madam\\b|\\bgreetings\\s+of\\s+the\\s+day\\b|\\bhello\\s+dear\\b"
+    ],
+    "hinglish": [
+     "\\b(?:priya|priy)\\s+(?:grahak|upbhokta|sadasya)\\b"
+    ],
+    "hi": [
+     "प्रिय (?:ग्राहक|उपभोक्ता|सदस्य|खाताधारक)",
+     "आदरणीय ग्राहक"
+    ]
+   }
+  },
+  {
+   "id": "callback",
+   "title": "Asks you to call or message a number",
+   "weight": 0.12,
+   "max_weight": 0.2,
+   "category": null,
+   "explain": "Moving you to a phone call lets the scammer pressure you directly.",
+   "negatable": false,
+   "patterns": {
+    "en": [
+     "\\b(?:call|contact|dial|whatsapp|ring|reach)\\b[^.!?\\n\\d]{0,45}\\+?\\d[\\d\\s-]{6,}\\d",
+     "\\b(?:helpline|customer\\s+care|toll[\\s-]?free)\\s+(?:number|no\\.?)\\b"
+    ],
+    "hinglish": [
+     "\\b(?:call|sampark|phone)\\s+kar\\w*\\b"
+    ],
+    "hi": [
+     "कॉल करें",
+     "संपर्क करें",
+     "फोन करें"
+    ]
+   }
+  }
+ ]
+}

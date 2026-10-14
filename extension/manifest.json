@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "SatarkAI Link Guard",
+  "version": "1.0.0",
+  "description": "Checks a link with the local SatarkAI app before it opens, and shows a warning page for risky links.",
+  "permissions": [],
+  "host_permissions": ["http://127.0.0.1:8000/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "run_at": "document_start", "all_frames": false }
+  ],
+  "action": { "default_title": "SatarkAI Link Guard" }
+}
