@@ -846,3 +846,7 @@ table.data.senders tr.repeat td:first-child { box-shadow: inset 3px 0 0 var(--lv
   background: var(--accent-soft); color: var(--ink); font-size: 0.82rem; font-weight: 600; }
 .sender-chip button { border: 0; background: transparent; cursor: pointer; color: var(--muted); font: inherit; padding: 0 6px; }
 @media (max-width: 600px) { .block-banner { grid-template-columns: auto minmax(0, 1fr); } .block-banner .btn { grid-column: 1 / -1; } }
+.report-banner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; margin-top: 16px;
+  padding: 12px 14px; border-radius: 12px; background: var(--tint-critical); border: 1px solid color-mix(in srgb, var(--lvl-critical) 40%, transparent); }
+.report-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 600px) { .report-banner { grid-template-columns: auto minmax(0, 1fr); } .report-actions { grid-column: 1 / -1; } .report-actions .btn { flex: 1; text-align: center; } }

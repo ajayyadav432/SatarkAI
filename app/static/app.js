@@ -100,6 +100,7 @@
     Critical: "80-100: matches known scams closely",
   };
   const CHANNEL_LABEL = { sms: "SMS", email: "E-mail", social: "Chat / social", url: "Link", auto: "Auto" };
+  const CYBERCRIME_PORTAL = "https://cybercrime.gov.in/";   // India's National Cyber Crime Reporting Portal
   const STATUS_LABEL = { new: "New", reviewed: "Reviewed", confirmed_scam: "Confirmed scam", false_positive: "False alarm" };
   const SOURCE_LABEL = {
     "rule": "Language rule", "url-check": "Link check", "ml-text": "Text model", "ml-url": "URL model",
@@ -184,6 +185,7 @@
           meter(r.score, r.level),
           r.elapsed_ms !== undefined ? h("div", { class: "elapsed", text: r.elapsed_ms + " ms · offline" }) : null)),
       r.block ? blockBanner(r.block) : null,
+      r.level === "Critical" ? reportBanner(r) : null,
       h("div", { class: "advice-box" },
         h("h3", { text: "What to do" }),
         h("ul", { class: "advice" }, (r.advice || []).map((a) => h("li", { text: a })))),
@@ -200,6 +202,40 @@
       h("div", {}, h("b", { text: "Block recommended: " + b.sender }),
         h("div", { class: "small", text: "This sender has sent " + b.count + " risky messages. " + b.how })),
       copy);
+  }
+
+  /** "Report this" for Critical results: copies a complaint text, then opens the national cybercrime portal. */
+  function reportBanner(r) {
+    const report = h("button", { type: "button", class: "btn small primary", onclick: () => {
+      const open = () => window.open(CYBERCRIME_PORTAL, "_blank", "noopener");
+      navigator.clipboard.writeText(complaintText(r)).then(() => {
+        toast("Complaint details copied. Paste them into the complaint form.");
+        open();
+      }, () => { toast("Could not copy. Use Copy report instead."); open(); });
+    } }, "Report on cybercrime.gov.in");
+    return h("div", { class: "report-banner" },
+      h("div", { class: "block-ico", "aria-hidden": "true", text: "🚨" }),
+      h("div", {}, h("b", { text: "Report this scam" }),
+        h("div", { class: "small", text: "The message, sender and links are copied for you, ready to paste into the complaint. " +
+          "Lost money? Call 1930 at once." })),
+      h("div", { class: "report-actions" }, report,
+        // A button, not a link: every link inside a result goes through the warning page.
+        h("button", { type: "button", class: "btn small", onclick: () => { location.href = "tel:1930"; } }, "Call 1930")));
+  }
+
+  /** Complaint text for cybercrime.gov.in. Links are in their safe (defanged) form. */
+  function complaintText(r) {
+    const e = r.entities || {};
+    const lines = ["Suspected fraud message (checked with SatarkAI: " + r.level + ", " + r.score + "/100" +
+      (r.category && r.category !== "None" ? ", " + r.category : "") + ")"];
+    if (r.sender) lines.push("Sender: " + r.sender);
+    lines.push("Received as: " + (CHANNEL_LABEL[r.channel] || r.channel), "", "Message:", r.text || "");
+    if (r.urls && r.urls.length) lines.push("", "Links (do not open):", ...r.urls.map((u) => "- " + u.display));
+    if (e.phones && e.phones.length) lines.push("", "Phone numbers: " + e.phones.join(", "));
+    if (e.upi_ids && e.upi_ids.length) lines.push("UPI IDs: " + e.upi_ids.join(", "));
+    if (e.amounts && e.amounts.length) lines.push("Amounts mentioned: " + e.amounts.join(", "));
+    lines.push("", "Why it is suspicious:", ...(r.factors || []).slice(0, 6).map((f) => "- " + f.title));
+    return lines.join("\n");
   }
 
   function copyReport(r) {

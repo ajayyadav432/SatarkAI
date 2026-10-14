@@ -104,6 +104,25 @@ def test_analyse_shows_level_reasons_and_safe_link(page, server):
     assert page.problems == [] and page.external == []
 
 
+def test_critical_result_offers_report_with_complaint_text(page, server):
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=server)
+    page.context.route("https://cybercrime.gov.in/**", lambda route: route.fulfill(body="portal"))  # stay offline
+    page.goto(server + "/")
+    page.click("text=Bank KYC (SMS)")
+    page.wait_for_selector(".report-banner")
+    with page.context.expect_page() as portal:
+        page.click("text=Report on cybercrime.gov.in")
+    assert portal.value.url.startswith("https://cybercrime.gov.in")
+    portal.value.close()
+    text = page.evaluate("navigator.clipboard.readText()")
+    assert text.startswith("Suspected fraud message (checked with SatarkAI: Critical")
+    assert "Update your KYC" in text and "hxxp://sbi-kyc-update[.]xyz/login" in text
+    assert "Call 1930" in page.inner_text(".report-banner")
+    # Only Critical results get the banner.
+    page.click("text=Real OTP")
+    wait_until(page, "!document.querySelector('.report-banner')")
+
+
 def test_typed_message_with_html_is_shown_as_text(page, server):
     page.goto(server + "/")
     evil = '<img src=x onerror="window.__xss=1"><script>window.__xss=2</script> Dear customer update KYC'

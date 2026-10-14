@@ -30,7 +30,7 @@ app. Statistics about India are quoted from the sources linked at the end.
 >
 > **How.** SatarkAI combines 243 scam-language rules, link checks that catch brand impersonation, and two
 > machine-learning models we trained ourselves. Every verdict shows its reasons and the exact formula,
-> it runs offline in under 50 ms, and we measured it honestly: 98.6% accuracy on held-out SMS, 301
+> it runs offline in under 50 ms, and we measured it honestly: 98.6% accuracy on held-out SMS, 302
 > automated tests, and a list of what it still misses.
 >
 > **Close.** SatarkAI means "alert". Our goal: every Indian gets a second opinion before they click.
@@ -447,7 +447,7 @@ shows the verdict as a notification. Tested on a real Samsung phone (Android 16)
 
 ### How does input/output testing work?
 
-- **301 automated tests** (`./run.sh test`): unit tests for every module, API tests, security tests
+- **302 automated tests** (`./run.sh test`): unit tests for every module, API tests, security tests
   (a malicious message can never run code; strict content-security policy), model tests, one acceptance
   test per requirement R1-R9, and browser tests in real headless Chrome.
 - **Held-out test sets** for the models (section 4).

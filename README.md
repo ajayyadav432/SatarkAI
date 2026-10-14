@@ -27,7 +27,7 @@ Use the terminal inside VS Code (the Python environment was created there).
 
 ```bash
 ./run.sh            # start the app, then open http://localhost:8000
-./run.sh test       # run all 301 tests
+./run.sh test       # run all 302 tests
 ./run.sh seed       # add demo cases so the dashboard is not empty
 ./run.sh unseed     # remove the demo cases
 ./run.sh demo       # demo web pages with fake scam links (fake social network) on http://127.0.0.1:8765
@@ -85,7 +85,7 @@ Paste your own messages too. That is the real test.
 | R4 | Detect impersonation and urgency-based scam patterns. | `brands.py` (39 organisations, lookalike spelling, brand name on a foreign domain, sender mismatch), urgency and threat rules |
 | R5 | Classify messages according to risk level. | `scoring.py`: 0-100 score, 5 levels, scam category |
 | R6 | Explain the factors contributing to the risk classification. | Every factor has a weight and its evidence. Both models are linear and explained with exact SHAP values (waterfall per message, global importance on *How it works*), checked against the `shap` library |
-| R7 | Provide warnings before users interact with suspicious content. | Links shown as `hxxp://bad[.]site`, warning page `/go`, browser extension in `extension/` |
+| R7 | Provide warnings before users interact with suspicious content. | Links shown as `hxxp://bad[.]site`, warning page `/go`, browser extension in `extension/`. Critical results add *Report on cybercrime.gov.in* (copies a ready-to-paste complaint and opens the national portal) and *Call 1930* |
 | R8 | Maintain a searchable history of analyzed cases. | `app/db.py`: SQLite full-text search, filters, status, notes, CSV export, bulk upload. Only messages scoring 50 or more are saved (`SAVE_MIN_SCORE` in `app/config.py`) |
 | R9 | Provide a dashboard for security analysis. | Dashboard tab, `/api/stats`: risky SMS and e-mail (score 50+), repeat senders (how many risky messages each phone number / e-mail address sent), trends, categories, brands, domains |
 
@@ -177,7 +177,7 @@ app/
   static/            index.html, app.js, styles.css, go.html, go.js, Chart.js and Inter font (local copies)
 ml/                  download_data.py, train.py, sanity_legit_urls.txt
 models/              trained models and metrics.json
-tests/               301 tests: unit, API, security, models, acceptance R1-R9, browser
+tests/               302 tests: unit, API, security, models, acceptance R1-R9, browser
 extension/           browser extension
 scripts/             seed_demo.py, check_brands.py
 PLAN.md              the plan, design decisions and the findings log
