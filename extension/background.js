@@ -66,7 +66,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sender: message.sender ? String(message.sender).slice(0, 320) : null,
       ref: message.ref ? String(message.ref).slice(0, 300) : null,
     }, BATCH_TIMEOUT_MS)
-      .then((data) => sendResponse({ ok: true, result: data, case_page: APP + "/#case/" + data.case_id }))
+      .then((data) => sendResponse({ ok: true, result: data, case_page: data.case_id ? APP + "/#case/" + data.case_id : null }))
       .catch((err) => sendResponse({ ok: false, error: String(err) }));
     return true;
   }

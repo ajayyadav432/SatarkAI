@@ -58,6 +58,19 @@ RISK_LEVELS = [
     ("Critical", 80),
 ]
 
+# Only messages scoring at least this much are saved to History (and raise live alerts).
+# Lower scores are still analysed and shown, but not stored.
+SAVE_MIN_SCORE = 50
+
+
+def worth_saving(result: dict) -> bool:
+    return result["score"] >= SAVE_MIN_SCORE
+
+
+# Recommend blocking a sender after this many risky (saved) messages, all time.
+BLOCK_AFTER = 3
+
+
 # The warning page asks for confirmation from this level upwards.
 WARN_FROM_LEVEL = "Medium"
 

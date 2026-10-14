@@ -34,6 +34,34 @@ object Notifier {
             .apply { description = "An incoming SMS was checked and looks safe, or could not be checked" })
     }
 
+    /** If SatarkAI recommends blocking this sender (3+ risky messages), show a separate block notification. */
+    fun maybeBlock(context: Context, response: org.json.JSONObject) {
+        val b = response.optJSONObject("block") ?: return
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        val sender = b.optString("sender")
+        val count = b.optInt("count")
+        val isPhone = b.optString("kind") == "phone"
+        val builder = NotificationCompat.Builder(context, CH_RISK)
+            .setSmallIcon(R.drawable.ic_stat_satark)
+            .setLargeIcon(logo(context))
+            .setColor(0xFFDC3545.toInt())
+            .setContentTitle("⛔ Block $sender")
+            .setContentText("Sent $count scam messages. SatarkAI recommends blocking.")
+            .setStyle(NotificationCompat.BigTextStyle().bigText(
+                "$sender has sent $count scam messages. SatarkAI recommends blocking it.\n" + b.optString("how")))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+        if (isPhone) {
+            val block = PendingIntent.getActivity(context, sender.hashCode(),
+                Intent(context, BlockActivity::class.java).putExtra(BlockActivity.EXTRA_NUMBER, sender),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            builder.setContentIntent(block).addAction(0, "Block number", block)
+        }
+        // One block notification per sender, replaced (not repeated) as the count grows.
+        NotificationManagerCompat.from(context).notify(("block:" + sender).hashCode(), builder.build())
+    }
+
     private fun logo(context: Context): Bitmap? =
         ContextCompat.getDrawable(context, R.drawable.ic_logo)?.toBitmap(192, 192)
 

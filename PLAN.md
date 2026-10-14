@@ -182,7 +182,7 @@ run.sh          one command to start, test, train, seed
 | Models | Models load, held-out metrics above a floor, sanity sets (real brands must not be High) | pytest |
 | UI end to end | Analyse → see reasons → history → dashboard → warning page | headless Chromium (Playwright) |
 
-Result on 14 Oct 2026: **227 tests, all pass** (`./run.sh test`, about 45 seconds).
+Result on 14 Oct 2026: **301 tests, all pass** (`./run.sh test`, about 75 seconds).
 218 are unit / API / security / model / acceptance tests and 9 run in a real headless
 browser. The browser tests are skipped automatically if Playwright is not installed.
 
@@ -210,7 +210,7 @@ browser. The browser tests are skipped automatically if Playwright is not instal
 ## 12. Progress and findings log
 
 Status on 14 Oct 2026: **all 13 build steps are done.** The app runs on
-http://localhost:8000 and 227 tests pass. Every number below is copied from
+http://localhost:8000 and 301 tests pass. Every number below is copied from
 `models/metrics.json` (generated 2026-10-14 07:12, scikit-learn 1.9.1, seed 42) or from
 a test run on this machine.
 

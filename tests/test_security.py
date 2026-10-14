@@ -4,6 +4,8 @@ import io
 import re
 from pathlib import Path
 
+import pytest
+
 from app import config, db
 from app.analysis import lookup
 from app.analysis.pipeline import analyze
@@ -23,7 +25,14 @@ def test_security_headers(client):
         assert h["referrer-policy"] == "no-referrer"
 
 
-def test_html_in_a_message_is_returned_as_data_not_markup(client):
+@pytest.fixture()
+def save_everything(monkeypatch):
+    """These tests check how stored text is handled; their harmless messages would score below 50 and
+    not be saved, so the minimum is switched off for them."""
+    monkeypatch.setattr(config, "SAVE_MIN_SCORE", 0)
+
+
+def test_html_in_a_message_is_returned_as_data_not_markup(client, save_everything):
     r = client.post("/api/analyze", json={"text": XSS, "sender": XSS[:100]})
     assert r.status_code == 200 and r.headers["content-type"].startswith("application/json")
     assert r.json()["text"] == XSS            # stored and returned unchanged, as JSON text
@@ -49,7 +58,7 @@ def test_pages_have_no_inline_script_or_style():
         assert "http://" not in html and "https://" not in html, f"external resource in {name}"
 
 
-def test_sql_injection_in_search_and_filters(client):
+def test_sql_injection_in_search_and_filters(client, save_everything):
     client.post("/api/analyze", json={"text": "Dear customer update your KYC now"})
     attacks = ["' OR '1'='1", "'; DROP TABLE cases; --", '" OR 1=1 --', "kyc') UNION SELECT 1,2,3 --",
                "NEAR(", '"', "*", "kyc AND", "text:kyc", "(((", "\x00", "a" * 190]
@@ -63,7 +72,7 @@ def test_sql_injection_in_search_and_filters(client):
     assert client.get("/api/cases").json()["total"] == 1       # table still there
 
 
-def test_sql_injection_through_stored_text(client):
+def test_sql_injection_through_stored_text(client, save_everything):
     evil = "Robert'); DROP TABLE cases;-- http://x.com/'; DELETE FROM cases;--"
     cid = client.post("/api/analyze", json={"text": evil, "sender": "'; DROP TABLE cases;--"}).json()["case_id"]
     client.patch(f"/api/cases/{cid}", json={"notes": "'); DROP TABLE cases;--"})
@@ -71,7 +80,7 @@ def test_sql_injection_through_stored_text(client):
     assert client.get("/api/cases").json()["total"] == 1
 
 
-def test_csv_export_neutralises_formulas(client):
+def test_csv_export_neutralises_formulas(client, save_everything):
     for text in ("=HYPERLINK(\"http://evil.com\",\"click\")", "+1+1", "-2+3", "@SUM(A1:A9)"):
         client.post("/api/analyze", json={"text": text, "sender": "=cmd|' /C calc'!A0"})
     rows = list(csv.reader(io.StringIO(client.get("/api/cases/export.csv").text.lstrip("﻿"))))

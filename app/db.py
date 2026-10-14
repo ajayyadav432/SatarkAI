@@ -69,6 +69,8 @@ def connect():
     con = sqlite3.connect(config.DB_PATH, timeout=10)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
+    con.create_function("sender_kind", 1, lambda v: sender_kind(v or "") if (v or "").strip() else "none",
+                        deterministic=True)
     try:
         yield con
         con.commit()
@@ -83,6 +85,78 @@ def init_db() -> None:
     with connect() as con:
         con.execute("PRAGMA journal_mode = WAL")
         con.executescript(SCHEMA)
+        # Added later: one key per sender, so the same number written differently is one sender.
+        cols = {r[1] for r in con.execute("PRAGMA table_info(cases)")}
+        if "sender_key" not in cols:
+            con.execute("ALTER TABLE cases ADD COLUMN sender_key TEXT NOT NULL DEFAULT ''")
+            con.executemany("UPDATE cases SET sender_key = ? WHERE id = ?",
+                            [(sender_key(r[1]), r[0]) for r in con.execute("SELECT id, sender FROM cases")])
+        con.execute("CREATE INDEX IF NOT EXISTS idx_cases_sender_key ON cases(sender_key)")
+
+
+def sender_key(sender: str | None) -> str:
+    """One key per sender. Phone numbers: the last 10 digits (+91, 0 and spaces do not matter).
+    E-mail: the address in lower case (also from "Name <address>"). Sender IDs (AD-HDFCBK): upper case."""
+    s = (sender or "").strip()
+    if not s:
+        return ""
+    if "@" in s:
+        if "<" in s and ">" in s:
+            s = s[s.rfind("<") + 1:s.rfind(">")]
+        return "email:" + s.strip().lower()
+    digits = "".join(ch for ch in s if ch.isdigit())
+    if len(digits) >= 10 and len(digits) >= len(s.replace(" ", "").replace("-", "").replace("+", "")) - 1:
+        return "phone:" + digits[-10:]
+    return "id:" + s.upper()
+
+
+def block_advice(sender: str | None, risky_count: int) -> dict | None:
+    """Recommend blocking a sender who sent BLOCK_AFTER or more risky messages."""
+    key = sender_key(sender)
+    if not key or risky_count < config.BLOCK_AFTER:
+        return None
+    kind = key.split(":", 1)[0]
+    how = {"phone": "Block this number on your phone (Phone app > Settings > Blocked numbers) and report it on Sanchar Saathi (Chakshu).",
+           "email": "Block this address in your mail app (Gmail: open the mail > More > Block) and mark it as spam.",
+           "id": "Block this sender in your SMS app and report it on Sanchar Saathi (Chakshu)."}[kind]
+    return {"sender": sender, "kind": {"phone": "phone", "email": "email", "id": "sender-id"}[kind],
+            "count": risky_count, "how": how}
+
+
+def sender_history(sender: str | None, min_score: int | None = None, limit: int = 25) -> dict | None:
+    """Earlier risky messages (score >= min_score) from the same sender, all time, newest first."""
+    key = sender_key(sender)
+    if not key:
+        return None
+    min_score = config.SAVE_MIN_SCORE if min_score is None else min_score
+    with connect() as con:
+        rows = con.execute(
+            "SELECT id, created_at, score, level, category, result_json FROM cases "
+            "WHERE sender_key = ? AND score >= ? ORDER BY created_at DESC, id DESC LIMIT ?",
+            (key, min_score, limit)).fetchall()
+        count = con.execute("SELECT COUNT(*) FROM cases WHERE sender_key = ? AND score >= ?",
+                            (key, min_score)).fetchone()[0]
+    if not count:
+        return {"key": key, "count": 0, "links": [], "cases": []}
+    links, seen, cats = [], set(), {}
+    for r in rows:
+        if r["category"] and r["category"] != "None":
+            cats[r["category"]] = cats.get(r["category"], 0) + 1
+        try:
+            urls = json.loads(r["result_json"]).get("urls", [])
+        except ValueError:
+            urls = []
+        for u in urls:
+            if u.get("level") in ("Medium", "High", "Critical") and u.get("registered_domain") not in seen:
+                seen.add(u.get("registered_domain"))
+                links.append({"domain": u.get("registered_domain"), "display": u.get("display"), "level": u.get("level"),
+                              "score": u.get("score"), "case_id": r["id"], "when": r["created_at"]})
+    return {
+        "key": key, "count": count, "max_score": max(r["score"] for r in rows),
+        "last_seen": rows[0]["created_at"], "top_category": max(cats, key=cats.get) if cats else None,
+        "links": links[:5], "cases": [{"id": r["id"], "score": r["score"], "level": r["level"],
+                                       "category": r["category"], "when": r["created_at"]} for r in rows[:5]],
+    }
 
 
 def now_iso() -> str:
@@ -109,9 +183,9 @@ def save_case(result: dict, source: str = "user", created_at: str | None = None)
     brands = ", ".join(result.get("brands", []))
     with connect() as con:
         cur = con.execute(
-            "INSERT INTO cases (created_at, channel, sender, text, score, level, category, brands, "
-            "indicators, result_json, source) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-            (created_at or now_iso(), result["channel"], result.get("sender", ""), result["text"],
+            "INSERT INTO cases (created_at, channel, sender, sender_key, text, score, level, category, brands, "
+            "indicators, result_json, source) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (created_at or now_iso(), result["channel"], result.get("sender", ""), sender_key(result.get("sender")), result["text"],
              result["score"], result["level"], result["category"], brands, searchable,
              json.dumps(result, ensure_ascii=False), source),
         )
@@ -167,7 +241,7 @@ def fts_query(q: str) -> str | None:
 
 
 def _filters(q=None, level=None, category=None, status=None, channel=None, source=None,
-             date_from=None, date_to=None, min_score=None) -> tuple[str, list, bool]:
+             date_from=None, date_to=None, min_score=None, sender_key=None) -> tuple[str, list, bool]:
     where, params = [], []
     match = fts_query(q) if q else None
     if q and not match:
@@ -192,6 +266,9 @@ def _filters(q=None, level=None, category=None, status=None, channel=None, sourc
     if source:
         where.append("c.source = ?")
         params.append(source)
+    if sender_key:
+        where.append("c.sender_key = ?")
+        params.append(sender_key)
     if date_from:
         where.append("date(c.created_at, 'localtime') >= date(?)")
         params.append(date_from)
@@ -281,7 +358,35 @@ def categories() -> list[str]:
             "SELECT category FROM cases GROUP BY category ORDER BY COUNT(*) DESC")]
 
 
-def stats(days: int = 30) -> dict:
+def sender_kind(sender: str) -> str:
+    """phone, email or sender-id (registered SMS header such as AD-HDFCBK)."""
+    s = sender.strip()
+    if "@" in s:
+        return "email"
+    digits = sum(ch.isdigit() for ch in s)
+    if digits >= 7 and digits >= len(s.replace(" ", "")) - 3:
+        return "phone"
+    return "sender-id"
+
+
+def _risky_filter(min_score: int, since: str, f: dict) -> tuple[str, list]:
+    """WHERE clause for the dashboard's risky sections (score >= min_score plus the user's filters)."""
+    where, params = ["score >= ?", "created_at >= ?"], [min_score, since]
+    if f.get("kind"):
+        where.append("sender_kind(sender) = ?"); params.append(f["kind"])
+    if f.get("level"):
+        where.append("level = ?"); params.append(f["level"])
+    if f.get("category"):
+        where.append("category = ?"); params.append(f["category"])
+    if f.get("source"):
+        where.append("source = ?"); params.append(f["source"])
+    if f.get("sender"):
+        q = f["sender"].strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        where.append("sender LIKE ? ESCAPE '\\'"); params.append(f"%{q}%")
+    return " AND ".join(where), params
+
+
+def stats(days: int = 30, min_score: int = 50, filters: dict | None = None) -> dict:
     """Numbers for the security dashboard."""
     days = max(1, min(365, int(days)))
     since = (datetime.now(timezone.utc) - timedelta(days=days - 1)).strftime("%Y-%m-%dT00:00:00Z")
@@ -333,6 +438,50 @@ def stats(days: int = 30) -> dict:
             "SELECT id, created_at, channel, score, level, category, substr(text, 1, 140) AS text, status, source "
             "FROM cases WHERE level IN ('High','Critical') AND created_at >= ? "
             "ORDER BY created_at DESC, id DESC LIMIT 6", (since,))
+        # Risky messages (score 50 or more) from every source, newest first.
+        f = filters or {}
+        w, wp = _risky_filter(min_score, since, f)
+        risky = rows(
+            "SELECT id, created_at, channel, sender, score, level, category, substr(text, 1, 140) AS text, source "
+            f"FROM cases WHERE {w} ORDER BY created_at DESC, id DESC LIMIT 15", wp)
+        risky_total = con.execute(f"SELECT COUNT(*) FROM cases WHERE {w}", wp).fetchone()[0]
+        risky_by_channel = {r["channel"]: r["n"] for r in rows(
+            f"SELECT channel, COUNT(*) AS n FROM cases WHERE {w} GROUP BY channel", wp)}
+        # Choices for the filter menus: what exists among risky messages in this period (unfiltered).
+        options = {
+            "categories": [r["category"] for r in rows(
+                "SELECT category FROM cases WHERE score >= ? AND created_at >= ? AND category != 'None' "
+                "GROUP BY category ORDER BY COUNT(*) DESC", (min_score, since))],
+            "sources": [r["source"] for r in rows(
+                "SELECT source FROM cases WHERE score >= ? AND created_at >= ? GROUP BY source ORDER BY COUNT(*) DESC",
+                (min_score, since))],
+            "levels": [r["level"] for r in rows(
+                "SELECT level FROM cases WHERE score >= ? AND created_at >= ? GROUP BY level ORDER BY MIN(score)",
+                (min_score, since))],
+        }
+        # Repeat senders: how many risky messages each exact phone number / e-mail address / sender ID sent.
+        # One row per sender key: +919876501234, 09876501234 and 98765 01234 are the same sender.
+        senders = rows(
+            "SELECT sender_key, COUNT(*) AS n, MAX(score) AS max_score, MAX(created_at) AS last_seen, "
+            "GROUP_CONCAT(DISTINCT channel) AS channels, GROUP_CONCAT(DISTINCT source) AS sources, "
+            "COUNT(DISTINCT sender) AS spellings "
+            f"FROM cases WHERE {w} AND sender_key != '' "
+            "GROUP BY sender_key ORDER BY n DESC, max_score DESC, last_seen DESC LIMIT 15", wp)
+        for s in senders:
+            s["sender"] = con.execute("SELECT sender FROM cases WHERE sender_key = ? ORDER BY created_at DESC LIMIT 1",
+                                      (s["sender_key"],)).fetchone()[0]
+            top = con.execute(
+                f"SELECT category FROM cases WHERE {w} AND sender_key = ? AND category != 'None' "
+                "GROUP BY category ORDER BY COUNT(*) DESC, MAX(score) DESC LIMIT 1", [*wp, s["sender_key"]]).fetchone()
+            s["top_category"] = top[0] if top else None
+            s["kind"] = sender_kind(s["sender"])
+            # Block advice counts every risky message from this sender, all time (not only this period).
+            total = con.execute("SELECT COUNT(*) FROM cases WHERE sender_key = ? AND score >= ?",
+                                (s["sender_key"], min_score)).fetchone()[0]
+            s["all_time"] = total
+            s["block"] = total >= config.BLOCK_AFTER
+        sender_total = con.execute(
+            f"SELECT COUNT(DISTINCT sender_key) FROM cases WHERE {w} AND sender_key != ''", wp).fetchone()[0]
 
     # Fill days with no cases, so the trend chart has a continuous axis.
     today = datetime.now().date()
@@ -350,4 +499,8 @@ def stats(days: int = 30) -> dict:
         "categories": cats, "factors": factors, "brands": brand_rows, "domains": domains,
         "channels": channels, "statuses": [{"status": s, "n": statuses.get(s, 0)} for s in config.CASE_STATUSES],
         "recent_high_risk": recent,
+        "min_score": min_score,
+        "risky_messages": risky, "risky_total": risky_total, "risky_by_channel": risky_by_channel,
+        "filters": f, "filter_options": options,
+        "repeat_senders": senders, "risky_sender_count": sender_total, "block_after": config.BLOCK_AFTER,
     }

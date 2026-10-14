@@ -30,7 +30,7 @@ app. Statistics about India are quoted from the sources linked at the end.
 >
 > **How.** SatarkAI combines 243 scam-language rules, link checks that catch brand impersonation, and two
 > machine-learning models we trained ourselves. Every verdict shows its reasons and the exact formula,
-> it runs offline in under 50 ms, and we measured it honestly: 98.6% accuracy on held-out SMS, 256
+> it runs offline in under 50 ms, and we measured it honestly: 98.6% accuracy on held-out SMS, 301
 > automated tests, and a list of what it still misses.
 >
 > **Close.** SatarkAI means "alert". Our goal: every Indian gets a second opinion before they click.
@@ -271,6 +271,28 @@ Measured on new messages we wrote ourselves:
 | "Refund of ₹2,999, scan the QR and enter your UPI PIN to receive" | **Critical 86** |
 | `TEST.md`: 39 fresh messages | **33 correct**; the 6 misses are listed with reasons |
 
+### A scammer sends a phishing link first, then a harmless "open the link I sent". Does the AI fail?
+
+Not any more. SatarkAI remembers each sender's earlier risky messages (all time) and uses them as evidence:
+
+| Message from 9845012345 | Without sender memory | With sender memory |
+|---|---|---|
+| 1. "SBI: Your YONO account will be blocked today. Update PAN now: http://sbi-yono-pan-update.top/verify" | Critical 98 | Critical 98 |
+| 2. "Sir please open the link I sent you earlier and complete it…" (no link of its own) | Low (about 24) | **Critical 86**: "Points to an earlier phishing link from this sender" |
+| 3. "Last reminder: complete verification today using the above link" | Low | **Critical 84**, and **block recommended** |
+
+- **How:** if the sender already sent risky messages, the reason "This sender already sent N risky messages"
+  adds weight 0.30 (one), 0.38 (two) or 0.45 (three or more). If the new message points back ("the link I
+  sent", "above link", "upar wala link", "pichla message", "ऊपर दिए लिंक") and has no link of its own, and the
+  sender earlier sent a risky link, the reason "Points to an earlier phishing link" adds weight 0.65 (High on its own).
+- **Same sender in any format:** +919845012345, 09845012345 and 98450 12345 are one sender (last 10 digits);
+  e-mail addresses are compared in lower case, also from "Name <address>".
+- **Block recommendation:** after 3 risky messages from one sender, the phone shows "⛔ Block <number> · sent N
+  scam messages" with a *Block number* button that opens Android's Blocked numbers screen with the number
+  copied (Android does not let ordinary apps block numbers themselves, so the user confirms). The website
+  shows a banner and the dashboard a ⛔ Block badge.
+- **Tested:** `tests/test_sender_history.py` (23 tests) and on the Android emulator with real incoming SMS.
+
 ### The bank itself is compromised and sends a payment link to a real customer: what happens?
 
 We tested this:
@@ -425,7 +447,7 @@ shows the verdict as a notification. Tested on a real Samsung phone (Android 16)
 
 ### How does input/output testing work?
 
-- **256 automated tests** (`./run.sh test`): unit tests for every module, API tests, security tests
+- **301 automated tests** (`./run.sh test`): unit tests for every module, API tests, security tests
   (a malicious message can never run code; strict content-security policy), model tests, one acceptance
   test per requirement R1-R9, and browser tests in real headless Chrome.
 - **Held-out test sets** for the models (section 4).

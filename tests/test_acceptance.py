@@ -119,16 +119,17 @@ def test_R8_searchable_history(client):
     a = post(client, SCAM_KYC)["case_id"]
     b = post(client, SCAM_BILL)["case_id"]
     c = post(client, OK_CHAT)["case_id"]
+    assert c is None                                                             # score below 50: not saved
     listing = client.get("/api/cases").json()
-    assert listing["total"] == 3 and [x["id"] for x in listing["items"]] == [c, b, a]
+    assert listing["total"] == 2 and [x["id"] for x in listing["items"]] == [b, a]
     search = lambda **p: [x["id"] for x in client.get("/api/cases", params=p).json()["items"]]
     assert search(q="electricity") == [b] and search(q="sbi-kyc-update.xyz") == [a] and search(q="9876543210") == [b]
-    assert search(level="Safe") == [c] and search(category="Utility bill scam") == [b]
+    assert search(level="Safe") == [] and search(category="Utility bill scam") == [b]
     full = client.get(f"/api/cases/{a}").json()
     assert full["result"]["factors"] and full["text"] == SCAM_KYC                # the whole analysis is kept
     client.patch(f"/api/cases/{a}", json={"status": "confirmed_scam", "notes": "forwarded to bank"})
     assert search(status="confirmed_scam") == [a] and search(q="forwarded") == [a]
-    assert client.get("/api/cases/export.csv").text.count("\n") >= 4
+    assert client.get("/api/cases/export.csv").text.count("\n") >= 3
 
 
 def test_R9_dashboard_for_security_analysis(client):
@@ -136,8 +137,10 @@ def test_R9_dashboard_for_security_analysis(client):
     for text in (SCAM_KYC, SCAM_KYC, SCAM_BILL, SCAM_LOTTERY, OK_CHAT, OK_OTP):
         post(client, text)
     s = client.get("/api/stats", params={"days": 30}).json()
-    assert s["kpis"]["total"] == 6 and s["kpis"]["high_risk"] == 4 and s["kpis"]["high_risk_share"] == 66.7
-    assert {l["level"]: l["n"] for l in s["levels"]}["Safe"] == 2
+    # Only messages scoring 50 or more are saved, so the two safe ones are not counted.
+    assert s["kpis"]["total"] == 4 and s["kpis"]["high_risk"] == 4 and s["kpis"]["high_risk_share"] == 100.0
+    assert {l["level"]: l["n"] for l in s["levels"]}["Safe"] == 0
+    assert len(s["risky_messages"]) == 4 and s["min_score"] == 50
     assert len(s["trend"]["days"]) == 30 and sum(s["trend"]["series"]["Critical"]) + sum(s["trend"]["series"]["High"]) == 4
     assert s["categories"][0]["category"] == "KYC / account update" and s["categories"][0]["n"] == 2
     assert s["factors"] and s["brands"] and s["domains"] and s["channels"] and s["recent_high_risk"]

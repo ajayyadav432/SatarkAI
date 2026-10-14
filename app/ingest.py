@@ -14,9 +14,7 @@ from collections import OrderedDict, deque
 
 from app import config, db
 from app.analysis.pipeline import analyze
-from app.analysis.scoring import level_rank
 
-ALERT_FROM_LEVEL = "Medium"
 _MAX_SEEN = 2000
 _MAX_ALERTS = 200
 
@@ -56,16 +54,20 @@ def ingest(text: str, channel: str, sender: str | None, source: str, ref: str | 
         with _lock:
             if key in _seen:
                 return {**_seen[key], "duplicate": True}
-    result = analyze(text[: config.MAX_TEXT_CHARS], channel=channel, sender=sender, lookup=False)
-    case_id = db.save_case(result, source=source)
+    history = db.sender_history(sender) if sender else None
+    result = analyze(text[: config.MAX_TEXT_CHARS], channel=channel, sender=sender, lookup=False, history=history)
+    case_id = db.save_case(result, source=source) if config.worth_saving(result) else None
     out = _summary(result, case_id, source)
+    risky_count = (history["count"] if history else 0) + (1 if case_id else 0)
+    out["sender_risky_count"] = risky_count
+    out["block"] = db.block_advice(sender, risky_count)
     global _seq
     with _lock:
         if key:
             _seen[key] = out
             while len(_seen) > _MAX_SEEN:
                 _seen.popitem(last=False)
-        if level_rank(result["level"]) >= level_rank(ALERT_FROM_LEVEL):
+        if case_id is not None:   # alerts only for saved messages (score 50 or more), so "Open case" works
             _seq += 1
             _alerts.append({**out, "seq": _seq, "time": time.time(), "snippet": text[:140]})
     return {**out, "duplicate": False}

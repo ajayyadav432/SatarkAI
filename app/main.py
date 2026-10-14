@@ -167,8 +167,12 @@ def meta():
 
 @app.post("/api/analyze")
 def api_analyze(body: AnalyzeIn):
-    result = analyze(body.text, channel=body.channel, sender=body.sender, lookup=body.lookup)
-    result["case_id"] = db.save_case(result, source="user") if body.save else None
+    history = db.sender_history(body.sender) if body.sender else None
+    result = analyze(body.text, channel=body.channel, sender=body.sender, lookup=body.lookup, history=history)
+    result["saved_min_score"] = config.SAVE_MIN_SCORE
+    result["case_id"] = db.save_case(result, source="user") if body.save and config.worth_saving(result) else None
+    earlier = history["count"] if history else 0
+    result["block"] = db.block_advice(body.sender, earlier + (1 if result["case_id"] else 0))
     return result
 
 
@@ -253,9 +257,10 @@ def api_check_url(u: str = Query(min_length=1, max_length=config.MAX_URL_CHARS),
     return result
 
 
-def _case_filters(q, level, category, status, channel, source, date_from, date_to, min_score) -> dict:
+def _case_filters(q, level, category, status, channel, source, date_from, date_to, min_score, sender_key=None) -> dict:
     return {"q": q, "level": level, "category": category, "status": status, "channel": channel,
-            "source": source, "date_from": date_from, "date_to": date_to, "min_score": min_score}
+            "source": source, "date_from": date_from, "date_to": date_to, "min_score": min_score,
+            "sender_key": sender_key}
 
 
 DATE = r"^\d{4}-\d{2}-\d{2}$"
@@ -269,6 +274,7 @@ def api_cases(
     status: str | None = Query(default=None, max_length=80),
     channel: str | None = Query(default=None, max_length=40),
     source: str | None = Query(default=None, max_length=20),
+    sender_key: str | None = Query(default=None, max_length=340),
     date_from: str | None = Query(default=None, pattern=DATE),
     date_to: str | None = Query(default=None, pattern=DATE),
     min_score: int | None = Query(default=None, ge=0, le=100),
@@ -277,7 +283,7 @@ def api_cases(
     page_size: int = Query(default=20, ge=1, le=100),
 ):
     data = db.list_cases(page=page, page_size=page_size, sort=sort,
-                         **_case_filters(q, level, category, status, channel, source, date_from, date_to, min_score))
+                         **_case_filters(q, level, category, status, channel, source, date_from, date_to, min_score, sender_key))
     data["categories"] = db.categories()
     return data
 
@@ -296,11 +302,12 @@ def api_export(
     status: str | None = Query(default=None, max_length=80),
     channel: str | None = Query(default=None, max_length=40),
     source: str | None = Query(default=None, max_length=20),
+    sender_key: str | None = Query(default=None, max_length=340),
     date_from: str | None = Query(default=None, pattern=DATE),
     date_to: str | None = Query(default=None, pattern=DATE),
     min_score: int | None = Query(default=None, ge=0, le=100),
 ):
-    rows = db.export_rows(**_case_filters(q, level, category, status, channel, source, date_from, date_to, min_score))
+    rows = db.export_rows(**_case_filters(q, level, category, status, channel, source, date_from, date_to, min_score, sender_key))
     columns = ["id", "created_at", "channel", "sender", "score", "level", "category", "brands",
                "status", "notes", "source", "indicators", "text"]
     buf = io.StringIO()
@@ -337,8 +344,19 @@ def api_case_delete(case_id: int):
 
 
 @app.get("/api/stats")
-def api_stats(days: int = Query(default=30, ge=1, le=365)):
-    return db.stats(days)
+def api_stats(
+    days: int = Query(default=30, ge=1, le=365),
+    kind: Literal["phone", "email", "sender-id", "none"] | None = None,
+    level: Literal["Medium", "High", "Critical"] | None = None,
+    category: str | None = Query(default=None, max_length=80),
+    source: str | None = Query(default=None, max_length=20),
+    sender: str | None = Query(default=None, max_length=100),
+):
+    """Dashboard numbers. kind, level, category, source and sender filter the risky sections
+    (Repeat senders, Risky SMS & e-mail); the other charts always show everything."""
+    filters = {k: v for k, v in {"kind": kind, "level": level, "category": category, "source": source,
+                                 "sender": (sender or "").strip() or None}.items() if v}
+    return db.stats(days, min_score=config.SAVE_MIN_SCORE, filters=filters)
 
 
 @app.get("/api/model-card")
@@ -394,12 +412,14 @@ async def api_bulk(file: UploadFile = File(...)):
     items, by_level = [], {name: 0 for name, _ in config.RISK_LEVELS}
     for r in rows[: config.MAX_BULK_ROWS]:
         channel = r["channel"] if r["channel"] in config.CHANNELS else "auto"
-        result = analyze(r["text"][: config.MAX_TEXT_CHARS], channel=channel, sender=r["sender"])
-        case_id = db.save_case(result, source="bulk")
+        result = analyze(r["text"][: config.MAX_TEXT_CHARS], channel=channel, sender=r["sender"],
+                         history=db.sender_history(r["sender"]) if r["sender"] else None)
+        case_id = db.save_case(result, source="bulk") if config.worth_saving(result) else None
         by_level[result["level"]] += 1
         items.append({"case_id": case_id, "score": result["score"], "level": result["level"],
                       "category": result["category"], "text": result["text"][:160]})
-    return {"analysed": len(items), "truncated": truncated, "max_rows": config.MAX_BULK_ROWS,
+    return {"analysed": len(items), "saved": sum(i["case_id"] is not None for i in items),
+            "saved_min_score": config.SAVE_MIN_SCORE, "truncated": truncated, "max_rows": config.MAX_BULK_ROWS,
             "by_level": by_level, "items": items}
 
 

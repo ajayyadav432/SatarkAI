@@ -108,7 +108,7 @@ def test_export_csv(client):
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
     assert "attachment" in r.headers["content-disposition"]
     rows = list(csv.DictReader(io.StringIO(r.text.lstrip("﻿"))))
-    assert len(rows) == 2 and {r_["level"] for r_ in rows} >= {"Safe"}
+    assert len(rows) == 1 and rows[0]["level"] in ("High", "Critical")   # the safe message was not saved
     only = list(csv.DictReader(io.StringIO(client.get("/api/cases/export.csv", params={"q": "kyc"}).text.lstrip("﻿"))))
     assert len(only) == 1 and "KYC" in only[0]["text"]
 
@@ -118,8 +118,8 @@ def test_bulk_upload_csv_and_txt(client):
     r = client.post("/api/bulk", files={"file": ("msgs.csv", data.encode(), "text/csv")})
     assert r.status_code == 200
     body = r.json()
-    assert body["analysed"] == 2 and body["by_level"]["Safe"] == 1
-    assert client.get("/api/cases", params={"source": "bulk"}).json()["total"] == 2
+    assert body["analysed"] == 2 and body["by_level"]["Safe"] == 1 and body["saved"] == 1
+    assert client.get("/api/cases", params={"source": "bulk"}).json()["total"] == 1
     txt = (SCAM_BILL + "\n\n" + OK_CHAT + "\n").encode()
     assert client.post("/api/bulk", files={"file": ("m.txt", txt, "text/plain")}).json()["analysed"] == 2
 

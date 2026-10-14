@@ -18,6 +18,7 @@ object Retry {
             val fixed = try {
                 val r = SatarkClient.checkSms(store.serverUrl, store.pairingCode, item.sender, item.text,
                     "${item.sender}-${item.time}-${item.text.hashCode()}")
+                Notifier.maybeBlock(context, r)
                 val reasons = r.optJSONArray("reasons")
                 item.copy(level = r.optString("level"), score = r.optInt("score"), category = r.optString("category"),
                     reason = if (reasons != null && reasons.length() > 0) reasons.getString(0) else null, error = null)

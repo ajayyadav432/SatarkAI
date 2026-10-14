@@ -104,6 +104,7 @@
   const SOURCE_LABEL = {
     "rule": "Language rule", "url-check": "Link check", "ml-text": "Text model", "ml-url": "URL model",
     "impersonation": "Impersonation check", "sender": "Sender check", "live-lookup": "Live lookup",
+    "sender-history": "Sender history",
   };
 
   function levelBadge(level, big) {
@@ -165,6 +166,8 @@
     if (r.category && r.category !== "None") metaBits.push(pill(r.category));
     metaBits.push(pill((CHANNEL_LABEL[r.channel] || r.channel) + (r.channel_detected ? " (detected)" : "")));
     if (caseId) metaBits.push(pill("Case #" + caseId));
+    else if (live && r.saved_min_score !== undefined && r.score < r.saved_min_score && $("#opt-save").checked)
+      metaBits.push(pill("Not saved · score below " + r.saved_min_score));
     const actions = h("div", { class: "verdict-actions" },
       h("button", { class: "btn small", type: "button", onclick: () => openChat("Why is this rated " + r.level + "?") }, "Ask why"),
       h("button", { class: "btn small", type: "button", onclick: () => copyReport(r) }, "Copy report"));
@@ -180,10 +183,23 @@
           h("h2", { text: r.summary }),
           meter(r.score, r.level),
           r.elapsed_ms !== undefined ? h("div", { class: "elapsed", text: r.elapsed_ms + " ms · offline" }) : null)),
+      r.block ? blockBanner(r.block) : null,
       h("div", { class: "advice-box" },
         h("h3", { text: "What to do" }),
         h("ul", { class: "advice" }, (r.advice || []).map((a) => h("li", { text: a })))),
       live ? actions : null);
+  }
+
+  /** "Block recommended" for a sender with many risky messages. */
+  function blockBanner(b) {
+    const copy = h("button", { type: "button", class: "btn small", onclick: () => {
+      navigator.clipboard.writeText(b.sender).then(() => toast("Copied " + b.sender + ". Paste it into your block list."), () => toast("Could not copy"));
+    } }, "Copy " + (b.kind === "email" ? "address" : "number"));
+    return h("div", { class: "block-banner", role: "alert" },
+      h("div", { class: "block-ico", "aria-hidden": "true", text: "⛔" }),
+      h("div", {}, h("b", { text: "Block recommended: " + b.sender }),
+        h("div", { class: "small", text: "This sender has sent " + b.count + " risky messages. " + b.how })),
+      copy);
   }
 
   function copyReport(r) {
@@ -600,6 +616,7 @@
 
   function historyParams() {
     const p = new URLSearchParams();
+    if (hist.senderKey) p.set("sender_key", hist.senderKey);
     const add = (k, v) => { if (v) p.set(k, v); };
     add("q", $("#f-q").value.trim());
     add("level", $("#f-level").value);
@@ -645,7 +662,10 @@
           h("td", { class: "nowrap", text: STATUS_LABEL[c.status] || c.status }));
       }));
     }
-    $("#history-count").textContent = fmtInt(data.total) + (data.total === 1 ? " case" : " cases");
+    $("#history-count").replaceChildren(fmtInt(data.total) + (data.total === 1 ? " case" : " cases"),
+      hist.senderKey ? h("span", { class: "sender-chip" }, "From " + (hist.senderLabel || hist.senderKey) + " (all spellings)",
+        h("button", { type: "button", "aria-label": "Show all senders", text: "✕",
+          onclick: () => { hist.senderKey = null; hist.senderLabel = null; hist.page = 1; loadHistory(); } })) : null);
     const prev = h("button", { class: "btn small", type: "button", disabled: data.page <= 1,
       onclick: () => { hist.page -= 1; loadHistory(); } }, "Previous");
     const next = h("button", { class: "btn small", type: "button", disabled: data.page >= data.pages,
@@ -668,7 +688,7 @@
       $(id).addEventListener("change", refresh);
     }
     $("#filter-form").addEventListener("submit", (ev) => { ev.preventDefault(); refresh(); });
-    $("#f-reset").addEventListener("click", () => { $("#filter-form").reset(); refresh(); });
+    $("#f-reset").addEventListener("click", () => { $("#filter-form").reset(); hist.senderKey = null; hist.senderLabel = null; refresh(); });
 
     $("#bulk-file").addEventListener("change", async (ev) => {
       const file = ev.target.files[0];
@@ -679,7 +699,8 @@
       try {
         const r = await api("/api/bulk", { method: "POST", body: fd });
         const high = r.by_level.High + r.by_level.Critical;
-        toast(r.analysed + " messages analysed, " + high + " high-risk" + (r.truncated ? " (file cut at " + r.max_rows + " rows)" : ""));
+        toast(r.analysed + " messages analysed, " + high + " high-risk, " + r.saved + " saved (score " + r.saved_min_score + "+)" +
+          (r.truncated ? " (file cut at " + r.max_rows + " rows)" : ""));
         refresh();
       } catch (err) { toast(err.message); }
       ev.target.value = "";
@@ -777,6 +798,60 @@
       h("div", { class: "threat-ico", "aria-hidden": "true", text: "⚠" }),
       h("div", {}, h("div", { class: "eyebrow-sm", text: "Top threat this period" }),
         h("h2", { text: top.category }), h("p", { text: bits.join(" ") })));
+  }
+
+  const CHANNEL_ICON = { sms: "📱", email: "📧", social: "💬", url: "🔗" };
+  const SOURCE_SHORT = { "sms-app": "phone app", "email-watch": "inbox", "gmail-web": "Gmail", user: "pasted", bulk: "bulk", "demo-seed": "demo" };
+  const KIND_LABEL = { phone: "📱 Phone", email: "📧 E-mail", "sender-id": "🏷 Sender ID" };
+
+  /** Open History showing every message from one sender (all spellings of the same number). */
+  function historyFor(key, label) {
+    $("#filter-form").reset();
+    hist.senderKey = key; hist.senderLabel = label;
+    hist.page = 1;
+    if (location.hash === "#history") loadHistory(); else location.hash = "#history";
+  }
+
+  function riskyMessagesCard(s) {
+    const by = s.risky_by_channel || {};
+    const sub = fmtInt(s.risky_total) + " messages · score " + s.min_score + " or more, newest 15 shown · " +
+      ["sms", "email", "social", "url"].filter((c) => by[c]).map((c) => CHANNEL_ICON[c] + " " + fmtInt(by[c]) + " " + (CHANNEL_LABEL[c] || c)).join(" · ");
+    const body = s.risky_messages.length ? h("div", { class: "table-wrap" }, h("table", { class: "data" },
+      h("thead", {}, h("tr", {}, h("th", { text: "Time" }), h("th", { text: "Risk" }), h("th", { text: "From" }), h("th", { text: "Message" }))),
+      h("tbody", {}, s.risky_messages.map((c) => h("tr", { class: "clickable", tabindex: "0",
+        onclick: () => openCase(c.id), onkeydown: (ev) => { if (ev.key === "Enter") openCase(c.id); } },
+        h("td", { class: "nowrap" }, fmtTime(c.created_at), h("div", { class: "muted small", text: (CHANNEL_ICON[c.channel] || "") + " " + (SOURCE_SHORT[c.source] || c.source) })),
+        h("td", { class: "nowrap" }, levelBadge(c.level), " ", h("b", { text: String(c.score) })),
+        h("td", { class: "sender-cell", title: c.sender || "" }, c.sender ? h("span", { class: "mono", text: c.sender }) : h("span", { class: "muted", text: "—" })),
+        h("td", {}, c.category && c.category !== "None" ? h("b", { text: c.category }) : null, h("div", { class: "clamp muted small", text: c.text })))))))
+      : h("div", { class: "empty-chart", text: "No messages scored " + s.min_score + " or more in this period." });
+    return chartCard("Risky SMS & e-mail", sub, body);
+  }
+
+  function repeatSendersCard(s) {
+    const list = s.repeat_senders;
+    const max = Math.max(1, ...list.map((x) => x.n));
+    const body = list.length ? h("div", { class: "table-wrap" }, h("table", { class: "data senders" },
+      h("thead", {}, h("tr", {}, h("th", { text: "Sender" }), h("th", { class: "num", text: "Risky msgs" }),
+        h("th", { class: "num", text: "Max" }), h("th", { text: "Mostly" }), h("th", { text: "Last seen" }))),
+      h("tbody", {}, list.map((x) => {
+        const bar = h("i"); bar.style.width = (100 * x.n / max) + "%";
+        return h("tr", { class: "clickable" + (x.n >= 2 ? " repeat" : ""), tabindex: "0", title: "Show all messages from " + x.sender,
+          onclick: () => historyFor(x.sender_key, x.sender), onkeydown: (ev) => { if (ev.key === "Enter") historyFor(x.sender_key, x.sender); } },
+          h("td", { class: "sender-cell" }, h("span", { class: "mono", text: x.sender }),
+            x.block ? h("span", { class: "block-badge", title: x.all_time + " risky messages in total: blocking is recommended", text: "⛔ Block" }) : null,
+            h("div", { class: "muted small", text: [KIND_LABEL[x.kind] || x.kind].concat(String(x.channels || "").split(",")
+              .map((c) => CHANNEL_LABEL[c] || c).filter((c) => !(KIND_LABEL[x.kind] || "").includes(c))).join(" · ") })),
+          h("td", { class: "num" }, h("b", { text: fmtInt(x.n) }), h("div", { class: "count-bar" }, bar)),
+          h("td", { class: "num", text: String(x.max_score) }),
+          h("td", { class: "small", text: x.top_category || "—" }),
+          h("td", { class: "nowrap small", text: fmtTime(x.last_seen) }));
+      }))))
+      : h("div", { class: "empty-chart", text: "No sender has sent a message scoring " + s.min_score + " or more in this period." });
+    const repeat = list.filter((x) => x.n >= 2).length, block = list.filter((x) => x.block).length;
+    return chartCard("Repeat senders", fmtInt(s.risky_sender_count) + " senders sent risky messages · " + repeat +
+      " of the top " + list.length + " sent 2 or more · ⛔ " + block + " should be blocked (" + s.block_after + "+ risky messages) · " +
+      "the same number written differently counts as one sender · click a sender to see all their messages", body);
   }
 
   function kpi(label, value, sub, hero, extra) {
@@ -885,6 +960,7 @@
         : h("div", { class: "empty-chart", text: "No cases in this period." }));
 
     body.replaceChildren(kpis, threatCard(s) || "",
+      dashFilterBar(s), dashSections(s),
       h("div", { class: "dash-row" }, trendCard, levelsCard),
       h("div", { class: "dash-row" }, cats, facts, brandsCard),
       h("div", { class: "dash-row" }, domains, recent, channels));
@@ -902,11 +978,90 @@
           h("td", { class: "num", text: String(t.high[i]) }), h("td", { class: "num", text: String(t.other[i]) }))))))));
   }
 
+  // ---------- dashboard filters (risky sections only) ----------
+
+  const dashFilter = { kind: "", level: "", category: "", source: "", sender: "" };
+  let filterBarNode = null, sectionsNode = null, filterTimer = null;
+
+  function statsQuery(days) {
+    const p = new URLSearchParams({ days: String(days) });
+    for (const [k, v] of Object.entries(dashFilter)) if (v) p.set(k, v);
+    return p.toString();
+  }
+
+  function dashSections(s) {
+    if (!sectionsNode) sectionsNode = h("div", { class: "dash-row two" });
+    sectionsNode.replaceChildren(repeatSendersCard(s), riskyMessagesCard(s));
+    return sectionsNode;
+  }
+
+  /** Reload only the two risky sections, so the filter controls keep their focus. */
+  async function reloadSections() {
+    const days = (document.querySelector("input[name=range]:checked") || {}).value || "30";
+    if (sectionsNode) sectionsNode.classList.add("loading");
+    try { const s = await api("/api/stats?" + statsQuery(days)); dashSections(s); updateFilterSummary(s); }
+    catch (err) { toast(err.message); }
+    finally { if (sectionsNode) sectionsNode.classList.remove("loading"); }
+  }
+
+  function updateFilterSummary(s) {
+    const active = Object.values(dashFilter).filter(Boolean).length;
+    $("#df-summary").textContent = active
+      ? active + " filter" + (active === 1 ? "" : "s") + " on · " + fmtInt(s.risky_total) + " risky messages from " + fmtInt(s.risky_sender_count) + " senders"
+      : "Showing all risky messages (score " + s.min_score + "+)";
+    $("#df-reset").disabled = !active;
+  }
+
+  function fillSelect(sel, values, labels, current) {
+    sel.replaceChildren(h("option", { value: "", text: "All" }),
+      ...values.map((v) => h("option", { value: v, text: (labels && labels[v]) || v })));
+    sel.value = values.includes(current) || current === "" ? current : "";
+  }
+
+  /** Filter bar for "Repeat senders" and "Risky SMS & e-mail". Built once, kept between refreshes. */
+  function dashFilterBar(s) {
+    const o = s.filter_options || { categories: [], sources: [], levels: [] };
+    if (!filterBarNode) {
+      const sel = (id, label) => h("label", { class: "field" }, h("span", { text: label }), h("select", { id: id }));
+      filterBarNode = h("div", { class: "card filters dash-filters", role: "search", "aria-label": "Filter risky messages" },
+        h("div", { class: "df-title" }, h("b", { text: "Filter risky messages" }), h("span", { class: "muted small", id: "df-summary" })),
+        sel("df-kind", "Sender type"), sel("df-level", "Risk"), sel("df-category", "Scam category"), sel("df-source", "Source"),
+        h("label", { class: "field grow" }, h("span", { text: "Sender" }),
+          h("input", { type: "search", id: "df-sender", maxlength: "100", placeholder: "Number or e-mail, e.g. 98765 or @gmail.com", autocomplete: "off" })),
+        h("button", { type: "button", class: "btn", id: "df-reset" }, "Reset"));
+      const on = (id, key, delay) => {
+        const el = $("#" + id, filterBarNode);
+        el.addEventListener(el.tagName === "INPUT" ? "input" : "change", () => {
+          dashFilter[key] = el.value.trim();
+          clearTimeout(filterTimer);
+          filterTimer = setTimeout(reloadSections, delay);
+        });
+      };
+      on("df-kind", "kind", 0); on("df-level", "level", 0); on("df-category", "category", 0);
+      on("df-source", "source", 0); on("df-sender", "sender", 300);
+      $("#df-reset", filterBarNode).addEventListener("click", () => {
+        for (const k of Object.keys(dashFilter)) dashFilter[k] = "";
+        for (const el of filterBarNode.querySelectorAll("select, input")) el.value = "";
+        reloadSections();
+      });
+    }
+    fillSelect($("#df-kind", filterBarNode), ["phone", "email", "sender-id", "none"],
+      { phone: "📱 Phone number", email: "📧 E-mail address", "sender-id": "🏷 Sender ID (e.g. AD-HDFCBK)", none: "No sender" }, dashFilter.kind);
+    fillSelect($("#df-level", filterBarNode), ["Medium", "High", "Critical"],
+      { Medium: "Medium (50-59)", High: "High (60-79)", Critical: "Critical (80-100)" }, dashFilter.level);
+    fillSelect($("#df-category", filterBarNode), o.categories, null, dashFilter.category);
+    fillSelect($("#df-source", filterBarNode), o.sources,
+      { "sms-app": "📱 Phone app (SMS)", "email-watch": "📥 Inbox watcher", "gmail-web": "📧 Gmail", user: "💻 Pasted on website", bulk: "📄 Bulk upload", "demo-seed": "Demo" }, dashFilter.source);
+    $("#df-sender", filterBarNode).value = dashFilter.sender;
+    setTimeout(() => updateFilterSummary(s), 0);
+    return filterBarNode;
+  }
+
   async function loadDashboard() {
     const days = (document.querySelector("input[name=range]:checked") || {}).value || "30";
     const body = $("#dashboard-body");
     body.classList.add("loading");   // keep the previous render while new data loads
-    try { renderDashboard(await api("/api/stats?days=" + days)); }
+    try { renderDashboard(await api("/api/stats?" + statsQuery(days))); }
     catch (err) { toast(err.message); }
     finally { body.classList.remove("loading"); }
   }
@@ -1213,6 +1368,7 @@
         a.category && a.category !== "None" ? h("span", { class: "muted small", text: a.category }) : null),
       a.sender ? h("div", { class: "small muted", text: "From " + a.sender }) : null,
       h("div", { class: "alert-snippet", text: a.snippet }),
+      a.block ? h("div", { class: "alert-block", text: "⛔ Block recommended · " + a.block.count + " risky messages from this sender" }) : null,
       h("button", { type: "button", class: "btn small primary", onclick: () => { card.remove(); openCase(a.case_id); } }, "Open case"));
     close.addEventListener("click", () => card.remove());
     host.prepend(card);

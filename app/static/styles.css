@@ -818,3 +818,31 @@ dialog::backdrop { background: rgba(8, 10, 30, 0.55); backdrop-filter: blur(3px)
 .wf-end { padding: 4px 0; }
 .wf-end .wf-name b { font-size: 0.86rem; }
 @media (max-width: 600px) { .wf-row { grid-template-columns: minmax(0, 44%) minmax(0, 1fr) 46px; gap: 6px; font-size: 0.8rem; } }
+
+/* ---------- dashboard: repeat senders and risky messages ---------- */
+.dash-row.two { grid-template-columns: minmax(0, 1fr); }
+.sender-cell { max-width: 300px; }
+.sender-cell .mono { font-size: 0.84rem; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+table.data.senders tr.repeat td:first-child { box-shadow: inset 3px 0 0 var(--lvl-critical); }
+.count-bar { height: 4px; border-radius: 2px; background: var(--surface-2); margin-top: 4px; min-width: 50px; overflow: hidden; }
+.count-bar i { display: block; height: 100%; background: var(--lvl-critical); border-radius: 2px; }
+
+/* ---------- dashboard filter bar ---------- */
+.dash-filters { margin: 0; }
+.dash-filters .df-title { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.dash-filters .df-title b { font-size: 1rem; }
+.dash-filters .field { min-width: 150px; }
+.dash-filters .field.grow { flex: 1 1 260px; }
+.dash-row.two.loading { opacity: 0.55; transition: opacity 0.15s; }
+
+/* ---------- block recommendation ---------- */
+.block-banner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; margin-top: 16px;
+  padding: 12px 14px; border-radius: 12px; background: var(--tint-critical); border: 1px solid color-mix(in srgb, var(--lvl-critical) 40%, transparent); }
+.block-ico { font-size: 1.5rem; }
+.block-banner b { overflow-wrap: anywhere; }
+.block-badge { display: inline-block; margin-top: 4px; font-size: 0.72rem; font-weight: 750; color: #fff; background: var(--lvl-critical); padding: 1px 8px; border-radius: 999px; }
+.alert-block { font-size: 0.8rem; font-weight: 700; color: var(--lvl-critical); }
+.sender-chip { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; padding: 2px 4px 2px 10px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--ink); font-size: 0.82rem; font-weight: 600; }
+.sender-chip button { border: 0; background: transparent; cursor: pointer; color: var(--muted); font: inherit; padding: 0 6px; }
+@media (max-width: 600px) { .block-banner { grid-template-columns: auto minmax(0, 1fr); } .block-banner .btn { grid-column: 1 / -1; } }

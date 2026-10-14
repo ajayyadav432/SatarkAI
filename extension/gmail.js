@@ -47,14 +47,17 @@
     const text = css(document.createElement("span"), { flex: "1" });
     const reasons = (r.reasons || []).slice(0, 2).join(" · ");
     text.textContent = "SatarkAI: " + (r.level === "Safe" || r.level === "Low" ? "no strong scam signs found." : r.summary || "risky e-mail.") +
-      (reasons ? " " + reasons + "." : "");
+      (reasons ? " " + reasons + "." : "") +
+      (r.block ? " ⛔ This sender has sent " + r.block.count + " risky e-mails: block the sender." : "");
+    box.append(pill, text);
+    if (!caseUrl) { body.before(box); return; }   // not saved (score below 50): no case to open
     const link = document.createElement("a");
     link.href = caseUrl;
     link.target = "_blank";
     link.rel = "noopener";
     link.textContent = "Details";
     css(link, { color: "#047857", "font-weight": "700", "white-space": "nowrap" });
-    box.append(pill, text, link);
+    box.append(link);
     body.before(box);
   }
 

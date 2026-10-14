@@ -5,7 +5,7 @@ import re
 import time
 
 from app import config
-from app.analysis import brands, models, rules, scoring
+from app.analysis import brands, followup, models, rules, scoring
 from app.analysis.extract import Entities, defang, extract_entities, phone_kind
 from app.analysis.url_features import heuristic_findings, parse_url
 
@@ -155,8 +155,10 @@ def _sender_evidence(sender: str, mentioned: list[dict]) -> tuple[list[dict], li
     return factors, notes
 
 
-def analyze(text: str, channel: str = "auto", sender: str | None = None, lookup: bool = False) -> dict:
-    """Analyse one message and return score, level, reasons and extracted indicators."""
+def analyze(text: str, channel: str = "auto", sender: str | None = None, lookup: bool = False,
+            history: dict | None = None) -> dict:
+    """Analyse one message and return score, level, reasons and extracted indicators.
+    history: the sender's earlier risky messages (db.sender_history), used for follow-up messages."""
     started = time.perf_counter()
     text = (text or "").replace("\r\n", "\n").replace("\x00", "")[: config.MAX_TEXT_CHARS]
     sender = (sender or "").strip()[: config.MAX_SENDER_CHARS]
@@ -228,6 +230,10 @@ def analyze(text: str, channel: str = "auto", sender: str | None = None, lookup:
         s_factors, s_notes = _sender_evidence(sender, mentioned)
         evidence.extend(s_factors)
         notes.extend(s_notes)
+
+    # Earlier risky messages from the same sender (e.g. a follow-up to a phishing link sent before).
+    # The follow-up reason applies only when the message has no link of its own (its own link is checked anyway).
+    evidence.extend(followup.evidence(text, history, has_own_link=bool(url_results)))
 
     mobiles = [p for p in entities.phones if phone_kind(p) == "mobile"]
     if mobiles and "callback" in fired and (mentioned or strong_fired & {"threat", "kyc", "bill", "authority", "refund", "courier"}):
@@ -327,6 +333,8 @@ def analyze(text: str, channel: str = "auto", sender: str | None = None, lookup:
         "formula": "risk = 1 - (1 - w1) x (1 - w2) x ... ; score = risk x 100",
         "text": text,
         "sender": sender,
+        "sender_history": {"count": history["count"], "max_score": history.get("max_score"),
+                           "links": history.get("links", [])[:3]} if history and history.get("count") else None,
         "elapsed_ms": round((time.perf_counter() - started) * 1000, 1),
     }
 
