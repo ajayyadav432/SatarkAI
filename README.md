@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.svg" alt="SatarkAI logo: a shield with a watchful eye" width="110"></p>
+
 # SatarkAI
 
 AI-based phishing, scam message and malicious URL detection.
