@@ -199,6 +199,7 @@
     const go = (id) => () => { const t = document.getElementById(id); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); };
     const b = (label, id, n) => h("button", { type: "button", class: "jump-btn", onclick: go(id) }, label, n !== undefined ? h("b", { text: String(n) }) : null);
     const bits = [b("Verdict", "sec-verdict"), b("Message", "sec-message"), b("Why", "sec-why", (r.factors || []).length)];
+    if ((r.ml_text && r.ml_text.shap) || (r.urls || []).some((u) => u.ml && u.ml.shap)) bits.push(b("SHAP", "sec-shap"));
     if (r.urls && r.urls.length) bits.push(b("Links", "sec-links", r.urls.length));
     return h("nav", { class: "jump", "aria-label": "Result sections" }, bits);
   }
@@ -316,6 +317,64 @@
       h("dl", { class: "kv" }, rows.map((row) => [h("dt", { text: row[0] }), h("dd", {}, row[1].map((v) => tag(v)))])));
   }
 
+  // ---------- SHAP: how each feature moved the AI model ----------
+
+  const TOKEN_NAME = { urltoken: "a link", emailtoken: "an e-mail address", moneytoken: "a money amount",
+    phonetoken: "a phone or long number", numtoken: "a number" };
+  const tokenName = (t) => t.split(" ").map((w) => TOKEN_NAME[w] || w).join(" ");
+  const signed = (v, d) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(d === undefined ? 2 : d);
+
+  /** SHAP waterfall: from the average training example (base value) to this input, one bar per feature. */
+  function shapWaterfall(s, title, note) {
+    const rows = [];
+    let cum = s.base_value;
+    const steps = s.features.map((f) => { const from = cum; cum += f.shap; return { f, from, to: cum }; });
+    if (Math.abs(s.other.shap) >= 0.005) { const from = cum; cum += s.other.shap; steps.push({ other: true, from, to: cum }); }
+    const xs = [s.base_value, s.output_value].concat(...steps.map((x) => [x.from, x.to]));
+    const lo = Math.min(...xs), hi = Math.max(...xs), span = (hi - lo) || 1;
+    const pos = (v) => (100 * (v - lo) / span);
+    const bar = (from, to, cls) => {
+      const b = h("i", { class: cls });
+      b.style.left = Math.min(pos(from), pos(to)) + "%";
+      b.style.width = Math.max(0.6, Math.abs(pos(to) - pos(from))) + "%";
+      return h("div", { class: "wf-track" }, b);
+    };
+    const marker = (v, cls) => { const m = h("i", { class: cls }); m.style.left = pos(v) + "%"; return h("div", { class: "wf-track" }, m); };
+
+    rows.push(h("div", { class: "wf-row wf-end" },
+      h("div", { class: "wf-name" }, h("b", { text: "Average example" }), h("small", { text: "base value E[f(x)] · " + pct(s.base_probability, 1) })),
+      marker(s.base_value, "wf-dot"), h("div", { class: "wf-val", text: s.base_value.toFixed(2) })));
+    for (const st of steps) {
+      const v = st.other ? s.other.shap : st.f.shap;
+      const name = st.other ? h("span", { class: "muted", text: fmtInt(s.other.count) + " other features" })
+        : h("span", {}, st.f.display || tokenName(st.f.feature),
+          st.f.present ? null : h("small", { class: "wf-absent", text: " (not in this message)" }));
+      rows.push(h("div", { class: "wf-row" }, h("div", { class: "wf-name" }, name),
+        bar(st.from, st.to, v >= 0 ? "wf-up" : "wf-down"), h("div", { class: "wf-val " + (v >= 0 ? "up" : "down"), text: signed(v) })));
+    }
+    rows.push(h("div", { class: "wf-row wf-end" },
+      h("div", { class: "wf-name" }, h("b", { text: "This " + (title.includes("Link") ? "link" : "message") }), h("small", { text: "model output f(x) · " + pct(s.probability, 1) })),
+      marker(s.output_value, "wf-dot strong"), h("div", { class: "wf-val", text: s.output_value.toFixed(2) })));
+
+    return h("div", { class: "shap-block" },
+      h("div", { class: "shap-head" }, h("b", { text: title }), note ? h("span", { class: "muted small", text: note }) : null),
+      h("div", { class: "waterfall", role: "img", "aria-label": title + ": SHAP waterfall from " + pct(s.base_probability, 1) + " to " + pct(s.probability, 1) }, rows));
+  }
+
+  function shapCard(r) {
+    const blocks = [];
+    const t = r.ml_text || {};
+    if (t.used && t.shap) blocks.push(shapWaterfall(t.shap, "Text model", "trained on " + t.trained_on));
+    const u = (r.urls || []).filter((x) => x.ml && x.ml.used && x.ml.shap).sort((a, b) => b.ml.probability - a.ml.probability)[0];
+    if (u) blocks.push(shapWaterfall(u.ml.shap, "Link model · " + (u.registered_domain || u.host), null));
+    if (!blocks.length) return null;
+    return h("div", { class: "card", id: "sec-shap" },
+      h("h3", { text: "AI model explanation (SHAP)" }),
+      h("p", { class: "small muted", text: "How each feature moved the model from an average training example to this one. " +
+        "Red pushes towards scam, green towards safe (log-odds). Exact for our linear models and checked against the shap library." }),
+      blocks);
+  }
+
   function notesCard(r) {
     const ml = r.ml_text || {};
     if ((!r.notes || !r.notes.length) && !ml.used) return null;
@@ -340,7 +399,7 @@
 
   /** live: the result on the Analyze page (gets the jump bar and the assistant buttons). */
   function renderResult(r, caseId, live) {
-    return [live ? jumpNav(r) : null, verdictCard(r, caseId, live), messageCard(r), factorsCard(r), linksCard(r),
+    return [live ? jumpNav(r) : null, verdictCard(r, caseId, live), messageCard(r), factorsCard(r), shapCard(r), linksCard(r),
       indicatorsCard(r), notesCard(r)].filter(Boolean);
   }
 
@@ -960,6 +1019,34 @@
       h("details", {}, h("summary", { text: "Full scorecard (" + U.scorecard.length + " rows)" }),
         simpleTable(["Feature", "From", "To", "Points", "Training URLs"],
           U.scorecard.map((r) => [r.feature, r.from, r.to === null ? "and above" : r.to, (r.points > 0 ? "+" : "") + r.points.toFixed(2), fmtInt(r.train_rows)])))));
+
+    // SHAP: global feature importance
+    if (card.shap) {
+      const Sh = card.shap;
+      const imp = (title, part, nameOf) => {
+        const items = part.top_features.slice(0, 12);
+        const max = Math.max(...items.map((i) => i.mean_abs_shap), 1e-9);
+        return h("div", {}, h("h3", { text: title }),
+          h("p", { class: "small muted", text: "Base value " + part.base_log_odds.toFixed(2) + " (" + pct(part.base_probability, 1) +
+            ") from " + fmtInt(part.background_rows) + " training examples; importance over " + fmtInt(part.test_rows) + " test examples." }),
+          h("div", { class: "barlist" }, items.map((i) => {
+            const bar = h("div", { class: "bar" + (i.pushes === "safe" ? " lvl-Safe" : i.pushes === "scam" ? " lvl-Critical" : "") });
+            bar.style.width = (100 * i.mean_abs_shap / max) + "%";
+            return h("div", { class: "row" }, h("div", { class: "name", text: nameOf(i) }),
+              h("div", { class: "val", text: i.mean_abs_shap.toFixed(3) }), h("div", { class: "track" }, bar));
+          })));
+      };
+      nodes.push(h("div", { class: "card" }, h("h2", { text: "Explainability with SHAP" }),
+        h("p", { text: "Every model decision is explained with SHAP (SHapley Additive exPlanations). Our models are linear, so the SHAP values are exact: " +
+          "SHAP of a feature = weight × (its value − its average in the training data). The base value plus all SHAP values equals the model output, " +
+          "and our values are checked against the official shap library (LinearExplainer) in the automated tests." }),
+        h("p", { class: "small muted", text: "Below: global importance, the average absolute SHAP value of each feature over the held-out test data. " +
+          "Red = pushes towards scam, green = towards safe. Each result page shows a SHAP waterfall for that message." }),
+        h("div", { class: "two-col" },
+          imp("SMS / chat text model", Sh.text.sms, (i) => tokenName(i.feature)),
+          imp("E-mail text model", Sh.text.email, (i) => tokenName(i.feature))),
+        imp("URL model (per link feature)", Sh.url, (i) => i.label)));
+    }
 
     // Datasets
     const dsName = { sms_spam: "SMS Spam Collection (UCI)", phishing_email: "Phishing Email Dataset (Hugging Face)",

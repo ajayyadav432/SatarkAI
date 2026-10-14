@@ -1,0 +1,468 @@
+{
+ "method": "Exact SHAP for linear models: shap_i = w_i * (x_i - mean_i) in log-odds, background = feature means of the training split (same as shap.LinearExplainer, interventional).",
+ "text": {
+  "sms": {
+   "base_log_odds": -5.5025,
+   "base_probability": 0.0041,
+   "background_rows": 4127,
+   "test_rows": 1032,
+   "test_accuracy_reproduced": 0.9855,
+   "top_features": [
+    {
+     "feature": "moneytoken",
+     "mean_abs_shap": 0.3802,
+     "weight": 19.527,
+     "pushes": "scam"
+    },
+    {
+     "feature": "phonetoken",
+     "mean_abs_shap": 0.323,
+     "weight": 20.706,
+     "pushes": "scam"
+    },
+    {
+     "feature": "numtoken",
+     "mean_abs_shap": 0.3044,
+     "weight": 5.788,
+     "pushes": "scam"
+    },
+    {
+     "feature": "ok",
+     "mean_abs_shap": 0.142,
+     "weight": -5.651,
+     "pushes": "safe"
+    },
+    {
+     "feature": "text",
+     "mean_abs_shap": 0.1172,
+     "weight": 9.901,
+     "pushes": "scam"
+    },
+    {
+     "feature": "call",
+     "mean_abs_shap": 0.1144,
+     "weight": 4.749,
+     "pushes": "scam"
+    },
+    {
+     "feature": "call phonetoken",
+     "mean_abs_shap": 0.1138,
+     "weight": 11.559,
+     "pushes": "scam"
+    },
+    {
+     "feature": "your",
+     "mean_abs_shap": 0.1042,
+     "weight": 3.471,
+     "pushes": "scam"
+    },
+    {
+     "feature": "got",
+     "mean_abs_shap": 0.0972,
+     "weight": -4.553,
+     "pushes": "safe"
+    },
+    {
+     "feature": "txt",
+     "mean_abs_shap": 0.0932,
+     "weight": 10.821,
+     "pushes": "scam"
+    },
+    {
+     "feature": "lt",
+     "mean_abs_shap": 0.0917,
+     "weight": -4.914,
+     "pushes": "safe"
+    },
+    {
+     "feature": "gt",
+     "mean_abs_shap": 0.0901,
+     "weight": -4.882,
+     "pushes": "safe"
+    },
+    {
+     "feature": "lt gt",
+     "mean_abs_shap": 0.0778,
+     "weight": -4.572,
+     "pushes": "safe"
+    },
+    {
+     "feature": "urltoken",
+     "mean_abs_shap": 0.0727,
+     "weight": 14.632,
+     "pushes": "scam"
+    },
+    {
+     "feature": "reply",
+     "mean_abs_shap": 0.0671,
+     "weight": 7.869,
+     "pushes": "scam"
+    },
+    {
+     "feature": "home",
+     "mean_abs_shap": 0.0585,
+     "weight": -4.036,
+     "pushes": "safe"
+    },
+    {
+     "feature": "now",
+     "mean_abs_shap": 0.0576,
+     "weight": 2.277,
+     "pushes": "scam"
+    },
+    {
+     "feature": "da",
+     "mean_abs_shap": 0.0576,
+     "weight": -4.101,
+     "pushes": "safe"
+    },
+    {
+     "feature": "hey",
+     "mean_abs_shap": 0.0573,
+     "weight": -4.523,
+     "pushes": "safe"
+    },
+    {
+     "feature": "free",
+     "mean_abs_shap": 0.0572,
+     "weight": 4.328,
+     "pushes": "scam"
+    },
+    {
+     "feature": "know",
+     "mean_abs_shap": 0.0549,
+     "weight": -3.082,
+     "pushes": "safe"
+    },
+    {
+     "feature": "stop",
+     "mean_abs_shap": 0.0545,
+     "weight": 6.361,
+     "pushes": "scam"
+    },
+    {
+     "feature": "mobile",
+     "mean_abs_shap": 0.0533,
+     "weight": 7.769,
+     "pushes": "scam"
+    },
+    {
+     "feature": "come",
+     "mean_abs_shap": 0.0506,
+     "weight": -2.383,
+     "pushes": "safe"
+    },
+    {
+     "feature": "new",
+     "mean_abs_shap": 0.05,
+     "weight": 4.795,
+     "pushes": "scam"
+    }
+   ]
+  },
+  "email": {
+   "base_log_odds": -1.8395,
+   "base_probability": 0.1371,
+   "background_rows": 13982,
+   "test_rows": 3496,
+   "test_accuracy_reproduced": 0.9826,
+   "top_features": [
+    {
+     "feature": "your",
+     "mean_abs_shap": 0.2276,
+     "weight": 11.136,
+     "pushes": "scam"
+    },
+    {
+     "feature": "numtoken numtoken",
+     "mean_abs_shap": 0.1492,
+     "weight": -5.597,
+     "pushes": "safe"
+    },
+    {
+     "feature": "thanks",
+     "mean_abs_shap": 0.1432,
+     "weight": -12.015,
+     "pushes": "safe"
+    },
+    {
+     "feature": "click",
+     "mean_abs_shap": 0.1285,
+     "weight": 11.112,
+     "pushes": "scam"
+    },
+    {
+     "feature": "you",
+     "mean_abs_shap": 0.121,
+     "weight": 5.996,
+     "pushes": "scam"
+    },
+    {
+     "feature": "wrote",
+     "mean_abs_shap": 0.108,
+     "weight": -12.947,
+     "pushes": "safe"
+    },
+    {
+     "feature": "urltoken",
+     "mean_abs_shap": 0.0976,
+     "weight": -4.446,
+     "pushes": "safe"
+    },
+    {
+     "feature": "date",
+     "mean_abs_shap": 0.0962,
+     "weight": -6.999,
+     "pushes": "safe"
+    },
+    {
+     "feature": "emailtoken",
+     "mean_abs_shap": 0.0909,
+     "weight": -6.144,
+     "pushes": "safe"
+    },
+    {
+     "feature": "free",
+     "mean_abs_shap": 0.088,
+     "weight": 7.406,
+     "pushes": "scam"
+    },
+    {
+     "feature": "language",
+     "mean_abs_shap": 0.0863,
+     "weight": -9.024,
+     "pushes": "safe"
+    },
+    {
+     "feature": "url",
+     "mean_abs_shap": 0.0804,
+     "weight": -7.826,
+     "pushes": "safe"
+    },
+    {
+     "feature": "university",
+     "mean_abs_shap": 0.0792,
+     "weight": -8.647,
+     "pushes": "safe"
+    },
+    {
+     "feature": "attached",
+     "mean_abs_shap": 0.0768,
+     "weight": -9.031,
+     "pushes": "safe"
+    },
+    {
+     "feature": "urltoken date",
+     "mean_abs_shap": 0.076,
+     "weight": -7.779,
+     "pushes": "safe"
+    },
+    {
+     "feature": "url urltoken",
+     "mean_abs_shap": 0.0753,
+     "weight": -7.627,
+     "pushes": "safe"
+    },
+    {
+     "feature": "com",
+     "mean_abs_shap": 0.073,
+     "weight": 4.545,
+     "pushes": "scam"
+    },
+    {
+     "feature": "list",
+     "mean_abs_shap": 0.0728,
+     "weight": -4.9,
+     "pushes": "safe"
+    },
+    {
+     "feature": "money",
+     "mean_abs_shap": 0.0687,
+     "weight": 8.302,
+     "pushes": "scam"
+    },
+    {
+     "feature": "email",
+     "mean_abs_shap": 0.0674,
+     "weight": 4.918,
+     "pushes": "scam"
+    },
+    {
+     "feature": "numtoken moneytoken",
+     "mean_abs_shap": 0.0656,
+     "weight": -5.272,
+     "pushes": "safe"
+    },
+    {
+     "feature": "cc",
+     "mean_abs_shap": 0.0649,
+     "weight": -7.277,
+     "pushes": "safe"
+    },
+    {
+     "feature": "please",
+     "mean_abs_shap": 0.062,
+     "weight": -3.952,
+     "pushes": "safe"
+    },
+    {
+     "feature": "site",
+     "mean_abs_shap": 0.061,
+     "weight": 7.473,
+     "pushes": "scam"
+    },
+    {
+     "feature": "more",
+     "mean_abs_shap": 0.0577,
+     "weight": 4.185,
+     "pushes": "scam"
+    }
+   ]
+  }
+ },
+ "url": {
+  "base_log_odds": -0.0316,
+  "base_probability": 0.4921,
+  "background_rows": 167489,
+  "test_rows": 41543,
+  "test_accuracy_reproduced": 0.8129,
+  "top_features": [
+   {
+    "feature": "tld_risk",
+    "label": "Domain ending (.xyz, .top, .com \u2026)",
+    "mean_abs_shap": 0.8118
+   },
+   {
+    "feature": "private_suffix",
+    "label": "Hosted on a shared / free hosting platform",
+    "mean_abs_shap": 0.3947
+   },
+   {
+    "feature": "n_digits_domain",
+    "label": "N digit(s) in the domain name",
+    "mean_abs_shap": 0.3388
+   },
+   {
+    "feature": "n_hyphens_domain",
+    "label": "N hyphen(s) in the domain name",
+    "mean_abs_shap": 0.1567
+   },
+   {
+    "feature": "domain_label_len",
+    "label": "Domain name is N characters long",
+    "mean_abs_shap": 0.1517
+   },
+   {
+    "feature": "vowel_ratio",
+    "label": "Share of vowels in the domain name is N",
+    "mean_abs_shap": 0.0574
+   },
+   {
+    "feature": "domain_sensitive",
+    "label": "N trust word(s) such as login / secure in the domain name",
+    "mean_abs_shap": 0.056
+   },
+   {
+    "feature": "domain_entropy",
+    "label": "Domain name character randomness is N",
+    "mean_abs_shap": 0.0451
+   },
+   {
+    "feature": "n_digits_path",
+    "label": "N digit(s) in the path",
+    "mean_abs_shap": 0.0321
+   },
+   {
+    "feature": "path_depth",
+    "label": "Path has N level(s)",
+    "mean_abs_shap": 0.0298
+   },
+   {
+    "feature": "path_sensitive",
+    "label": "N trust word(s) such as login / verify in the path",
+    "mean_abs_shap": 0.0296
+   },
+   {
+    "feature": "path_len",
+    "label": "Path is N characters long",
+    "mean_abs_shap": 0.025
+   },
+   {
+    "feature": "n_dots_path",
+    "label": "N dot(s) in the path",
+    "mean_abs_shap": 0.0131
+   },
+   {
+    "feature": "n_special_path",
+    "label": "N special character(s) in the path",
+    "mean_abs_shap": 0.0112
+   },
+   {
+    "feature": "n_digits_sub",
+    "label": "N digit(s) in the subdomain",
+    "mean_abs_shap": 0.0102
+   },
+   {
+    "feature": "n_params",
+    "label": "N query parameter(s)",
+    "mean_abs_shap": 0.0097
+   },
+   {
+    "feature": "is_ip",
+    "label": "Host is an IP address",
+    "mean_abs_shap": 0.0083
+   },
+   {
+    "feature": "subdomain_len",
+    "label": "Subdomain is N characters long",
+    "mean_abs_shap": 0.0081
+   },
+   {
+    "feature": "n_hyphens_sub",
+    "label": "N hyphen(s) in the subdomain",
+    "mean_abs_shap": 0.007
+   },
+   {
+    "feature": "query_len",
+    "label": "Query string is N characters long",
+    "mean_abs_shap": 0.0068
+   },
+   {
+    "feature": "n_subdomains",
+    "label": "N subdomain level(s)",
+    "mean_abs_shap": 0.0065
+   },
+   {
+    "feature": "has_at",
+    "label": "'@' appears in the link",
+    "mean_abs_shap": 0.0056
+   },
+   {
+    "feature": "embedded_domain",
+    "label": "Another domain name appears inside the path",
+    "mean_abs_shap": 0.0043
+   },
+   {
+    "feature": "sub_sensitive",
+    "label": "N trust word(s) such as login / secure in the subdomain",
+    "mean_abs_shap": 0.004
+   },
+   {
+    "feature": "has_punycode",
+    "label": "Hostname uses punycode (xn--)",
+    "mean_abs_shap": 0.0014
+   },
+   {
+    "feature": "double_slash_path",
+    "label": "'//' appears inside the path",
+    "mean_abs_shap": 0.0013
+   },
+   {
+    "feature": "has_exec_ext",
+    "label": "Path ends in a downloadable file type",
+    "mean_abs_shap": 0.0
+   }
+  ]
+ },
+ "generated_at": "2026-10-14T19:14:43+0530"
+}

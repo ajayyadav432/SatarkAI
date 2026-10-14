@@ -137,6 +137,32 @@ Rules have hand-set weights, for example: KYC demand 0.40, threat of loss 0.35, 
 0.50, time pressure 0.25. The text model's weight in the final score grows with its probability, from
 0.15 (at 50%) to 0.45 (at 100%); the URL model's from 0.25 (at its alert threshold) to 0.55.
 
+### Did you use SHAP? (explainable AI)
+
+Yes. Every model decision is explained with **SHAP** (SHapley Additive exPlanations).
+
+- **Exact, not approximated:** our models are linear (logistic regression), so SHAP has a closed form:
+  `SHAP of feature i = weight_i × (value_i − average value_i in the training data)`, in log-odds.
+  This is what `shap.LinearExplainer` computes (interventional / independent features).
+- **Base value** = the model's output for an average training example: SMS model −5.50 (0.4%),
+  e-mail −1.84 (13.7%), URL model −0.03 (49.2%). Base value + all SHAP values = the model's output, exactly
+  (tested to 10⁻⁹).
+- **Background** = feature averages of the exact training split (4,127 SMS, 13,982 e-mails, 167,489 URLs).
+  We proved it is the same split by re-scoring the test set: same accuracy as recorded (98.55%, 98.26%, 81.29%).
+- **Checked against the official library:** automated tests compare our values with `shap.LinearExplainer`
+  for the SMS, e-mail and URL models; the largest difference over all 6,733 SMS features is 0.0.
+- **Local explanation** (every result page, "AI model explanation (SHAP)"): a **waterfall** from the average
+  example to this message. Example, the SBI SMS: base −5.50 → "a link" +4.41, "customer" +1.23, "your" +1.12,
+  "account" +0.99 … → 2.66 = 93.5%. Words *missing* from the message also count (no phone number: −0.17).
+  The link gets its own waterfall: base −0.03 → ".xyz ending" +3.18, "trust word in the path" +1.87 … → 7.55 = 100%.
+- **Global explanation** ("How it works" page): mean |SHAP| of every feature over the held-out test data.
+  Most important: SMS "a phone or long number" (0.32), e-mail "a number a number" (0.15), URL "domain ending" (0.81).
+- **How SHAP and our rule reasons fit together:** SHAP explains the two AI models; rules and link checks
+  explain themselves (each has its own weight). Both are combined in "Why this level".
+
+Files: `app/analysis/shap_explain.py` (SHAP values), `ml/shap_background.py` (background and global
+importance), `tests/test_shap.py` (exactness and library checks).
+
 ### How does it "search" a paragraph and mark the words?
 
 1. **Extract**: links, phone numbers, UPI IDs, e-mails and amounts are found with patterns. Links are then
@@ -196,7 +222,7 @@ links. Our honest number is 81.3%.
 
 | | Our trained model | LLM |
 |---|---|---|
-| Explains the verdict (R6) | Exact contribution of every word and feature | Gives a plausible explanation, not the real reason |
+| Explains the verdict (R6) | Exact SHAP value of every word and feature | Gives a plausible explanation, not the real reason |
 | Privacy | Message never leaves the laptop | Message sent to a cloud service |
 | Speed and cost | Milliseconds, free, no GPU | Seconds, paid per call |
 | Works offline | Yes | No |

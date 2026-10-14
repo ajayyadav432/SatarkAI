@@ -9,8 +9,8 @@ import joblib
 import numpy as np
 
 from app import config
-from app.analysis import textprep
-from app.analysis.url_scorecard import score_url
+from app.analysis import shap_explain, textprep
+from app.analysis.url_scorecard import LABELS as URL_LABELS, score_url
 
 TEXT_MODEL_FILE = "text_model.joblib"
 URL_MODEL_FILE = "url_model.joblib"
@@ -94,12 +94,16 @@ def predict_text(text: str, channel: str) -> dict:
               "contribution": round(float(contrib[i]), 3)} for i in order[::-1] if contrib[i] > 0.02][:10]
     safe_terms = [{"term": str(names[row.indices[i]]), "display": _display(str(names[row.indices[i]])),
                    "contribution": round(float(contrib[i]), 3)} for i in order if contrib[i] < -0.02][:6]
+    shap = shap_explain.explain_text(row, model, key, names)
+    if shap:
+        for f in shap["features"]:
+            f["display"] = _display(f["feature"])
     highlight = []
     for t in terms:
         for w in t["term"].split(" "):
             if w not in textprep.PLACEHOLDERS and w not in highlight:
                 highlight.append(w)
-    return {**base, "used": True, "probability": round(prob, 4), "log_odds": round(logit, 3),
+    return {**base, "used": True, "shap": shap, "probability": round(prob, 4), "log_odds": round(logit, 3),
             "intercept": round(float(model["intercept"]), 3), "scam_terms": terms,
             "safe_terms": safe_terms, "highlight_words": highlight}
 
@@ -114,9 +118,15 @@ def predict_url(info) -> dict:
     if info.trusted:
         return {"used": False, "reason": "Official domain: the model is not needed."}
     res = score_url(info, model)
+    shap = shap_explain.explain_url(info, model)
+    if shap:   # readable label for each feature, also when the feature is "not present"
+        labels = {p["feature"]: p["label"] for p in res["parts"]}
+        for f in shap["features"]:
+            lab = labels.get(f["feature"])
+            f["display"] = lab if lab else "Not: " + URL_LABELS[f["feature"]][0].lower() + URL_LABELS[f["feature"]][1:]
     parts = [p for p in res["parts"] if p["label"]]
     up = sorted((p for p in parts if p["points"] > 0.05), key=lambda p: -p["points"])[:6]
     down = sorted((p for p in parts if p["points"] < -0.05), key=lambda p: p["points"])[:4]
     return {"used": True, "probability": round(res["probability"], 4), "log_odds": round(res["logit"], 3),
             "intercept": round(res["intercept"], 3), "threshold": url_threshold(),
-            "raises_risk": up, "lowers_risk": down, "all_points": res["parts"]}
+            "raises_risk": up, "lowers_risk": down, "all_points": res["parts"], "shap": shap}

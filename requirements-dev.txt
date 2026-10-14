@@ -1,3 +1,4 @@
 # Only needed for the browser tests (tests/test_e2e.py). They are skipped when this is missing.
 # After installing:  .venv/bin/python -m playwright install chromium
 playwright==1.64.0
+shap==0.53.0          # tests only: checks our SHAP values against the official library

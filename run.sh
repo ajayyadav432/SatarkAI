@@ -46,7 +46,8 @@ case "${1:-serve}" in
     ;;
   train)
     "$PY" -m ml.download_data
-    exec "$PY" -m ml.train
+    "$PY" -m ml.train
+    exec "$PY" -m ml.shap_background      # SHAP background for the new models
     ;;
   seed)
     exec "$PY" scripts/seed_demo.py

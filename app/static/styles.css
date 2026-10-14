@@ -796,3 +796,25 @@ dialog::backdrop { background: rgba(8, 10, 30, 0.55); backdrop-filter: blur(3px)
   .hero-band { grid-template-columns: minmax(0, 1fr); padding: 22px 20px; gap: 16px; }
   .hero-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* ---------- SHAP waterfall ---------- */
+.shap-block { margin-top: 14px; }
+.shap-block + .shap-block { border-top: 1px solid var(--hairline); padding-top: 14px; }
+.shap-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 8px; }
+.waterfall { display: grid; gap: 4px; }
+.wf-row { display: grid; grid-template-columns: minmax(0, 38%) minmax(0, 1fr) 54px; gap: 10px; align-items: center; font-size: 0.86rem; }
+.wf-name { min-width: 0; overflow-wrap: anywhere; }
+.wf-name small { display: block; color: var(--muted); font-size: 0.74rem; }
+.wf-absent { display: inline !important; }
+.wf-track { position: relative; height: 18px; background: var(--surface-2); border-radius: 4px; }
+.wf-track i { position: absolute; top: 3px; bottom: 3px; border-radius: 3px; }
+.wf-up { background: var(--lvl-critical); }
+.wf-down { background: var(--lvl-safe); }
+.wf-dot { top: 2px !important; bottom: 2px !important; width: 4px; margin-left: -2px; background: var(--muted); }
+.wf-dot.strong { background: var(--ink); width: 5px; }
+.wf-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.84rem; }
+.wf-val.up { color: var(--lvl-critical); }
+.wf-val.down { color: var(--lvl-safe); }
+.wf-end { padding: 4px 0; }
+.wf-end .wf-name b { font-size: 0.86rem; }
+@media (max-width: 600px) { .wf-row { grid-template-columns: minmax(0, 44%) minmax(0, 1fr) 46px; gap: 6px; font-size: 0.8rem; } }

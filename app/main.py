@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app import chat, config, db, downloads, ingest, mailwatch
-from app.analysis import brands, models, rules
+from app.analysis import brands, models, rules, shap_explain
 from app.analysis.extract import normalise_url
 from app.analysis.pipeline import analyze, analyze_url
 from app.analysis.scoring import (CAP_REASON, CAP_WITHOUT_STRONG, ML_TEXT_MAX, ML_TEXT_MIN, ML_URL_MAX,
@@ -58,6 +58,9 @@ async def security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "no-referrer"
     if request.url.path.startswith("/api/") or request.url.path in ("/", "/go"):
         response.headers["Cache-Control"] = "no-store"
+    elif request.url.path.startswith("/static/"):
+        # Always ask the server whether the file changed (cheap 304 if not), so updates show at once.
+        response.headers["Cache-Control"] = "no-cache"
     return response
 
 
@@ -345,6 +348,7 @@ def api_model_card():
         "metrics": models.metrics(),
         "rules": rules.group_info(),
         "brands": brands.brand_count(),
+        "shap": shap_explain.summary(),
         "scoring": {
             "formula": "risk = 1 - (1 - w1) x (1 - w2) x ... ; score = risk x 100",
             "levels": [{"name": n, "from": lo} for n, lo in config.RISK_LEVELS],
