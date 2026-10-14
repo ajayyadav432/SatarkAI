@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chatter (demo) - fake social network for testing SatarkAI</title>
+<style>
+  :root { --bg: #f0f2f5; --card: #fff; --ink: #1c1e21; --muted: #65676b; --line: #e4e6eb; --brand: #7c3aed; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+  .demo-note { background: #fff7e6; color: #8a5300; border-bottom: 1px solid #ffd591; text-align: center; padding: 6px 12px; font-size: 13px; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.1); display: flex; align-items: center; gap: 16px; padding: 8px 20px; }
+  .logo { font-weight: 800; font-size: 26px; color: var(--brand); letter-spacing: -0.04em; }
+  .search { flex: 0 1 260px; background: var(--bg); border-radius: 999px; padding: 8px 14px; color: var(--muted); font-size: 14px; }
+  .nav { margin-left: auto; display: flex; gap: 6px; }
+  .nav span { padding: 8px 16px; border-radius: 8px; color: var(--muted); font-weight: 600; }
+  .nav span.on { color: var(--brand); border-bottom: 3px solid var(--brand); border-radius: 0; }
+  .me { width: 36px; height: 36px; border-radius: 50%; background: #c7d2fe; display: grid; place-items: center; font-weight: 700; }
+  main { display: grid; grid-template-columns: 240px minmax(0, 600px) 320px; gap: 20px; justify-content: center; padding: 20px; }
+  .side a, .side div { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; color: var(--ink); text-decoration: none; font-weight: 600; }
+  .ico { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 17px; background: var(--card); }
+  .card { background: var(--card); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.08); padding: 14px 16px; margin-bottom: 14px; }
+  .composer { color: var(--muted); }
+  .composer .box { background: var(--bg); border-radius: 999px; padding: 10px 16px; margin-left: 46px; margin-top: -38px; }
+  .head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; flex: none; }
+  .name { font-weight: 700; } .name small { font-weight: 400; color: var(--muted); }
+  .meta { font-size: 12.5px; color: var(--muted); }
+  .verified { color: #1d9bf0; font-size: 13px; }
+  .text { white-space: pre-line; margin: 4px 0 10px; }
+  .preview { display: block; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; text-decoration: none; color: var(--ink); margin-bottom: 8px; }
+  .preview .img { height: 120px; display: grid; place-items: center; font-size: 46px; }
+  .preview .cap { background: #f7f8fa; padding: 8px 12px; font-size: 13px; }
+  .preview .cap b { display: block; font-size: 14.5px; }
+  .preview .cap span { color: var(--muted); text-transform: lowercase; }
+  .stats { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  .acts { display: flex; justify-content: space-around; padding-top: 6px; color: var(--muted); font-weight: 600; font-size: 14px; }
+  .chat h3 { margin: 0 0 8px; font-size: 17px; }
+  .dm { display: flex; gap: 10px; padding: 10px 6px; border-bottom: 1px solid var(--line); }
+  .dm:last-child { border-bottom: 0; }
+  .dm .body { min-width: 0; font-size: 14px; }
+  .dm .who { font-weight: 700; }
+  .dm .unread { width: 9px; height: 9px; border-radius: 50%; background: var(--brand); margin-left: auto; flex: none; margin-top: 6px; }
+  .blocked { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1c1e21; color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 14px; display: none; z-index: 10; }
+  @media (max-width: 1100px) { main { grid-template-columns: minmax(0, 600px); } .side, .chat-col { display: none; } }
+</style>
+</head>
+<body>
+<div class="demo-note">⚠ Demo page: a <b>fictional</b> social network with <b>fake scam posts</b> for testing SatarkAI. All names and offers are made up. Never enter real details.</div>
+<header>
+  <div class="logo">chatter</div>
+  <div class="search">🔍 Search Chatter</div>
+  <div class="nav"><span class="on">🏠 Home</span><span>👥 Friends</span><span>🎬 Watch</span><span>🛒 Market</span></div>
+  <div class="me">A</div>
+</header>
+
+<main>
+  <aside class="side">
+    <div><span class="ico">👤</span> Ajay Y.</div>
+    <div><span class="ico">👥</span> Friends</div>
+    <div><span class="ico">📰</span> Feeds</div>
+    <div><span class="ico">👪</span> Groups</div>
+    <div><span class="ico">🛒</span> Marketplace</div>
+    <div><span class="ico">🕘</span> Memories</div>
+  </aside>
+
+  <section class="feed">
+    <div class="card composer"><div class="av" style="background:#6366f1">A</div><div class="box">What's on your mind, Ajay?</div></div>
+
+    <article class="card">
+      <div class="head"><div class="av" style="background:#e11d48">K</div><div><div class="name">KBC Lucky Draw Official <span class="verified">✔</span></div><div class="meta">Sponsored · 🌐</div></div></div>
+      <div class="text">🎉 CONGRATULATIONS! Your mobile number has WON ₹25,00,000 in the KBC Lucky Draw 2026!
+Claim within 24 hours or the prize goes to the next winner. Pay only ₹12,500 processing fee.</div>
+      <a class="preview" href="http://kbc-lottery-winner.top/claim-prize"><div class="img" style="background:#fde68a">🏆</div><div class="cap"><span>kbc-lottery-winner.top</span><b>Claim your ₹25 lakh prize now</b></div></a>
+      <div class="stats"><span>👍❤️ 2.1K</span><span>843 comments · 1.2K shares</span></div>
+      <div class="acts"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
+    </article>
+
+    <article class="card">
+      <div class="head"><div class="av" style="background:#0ea5e9">P</div><div><div class="name">Priya Sharma</div><div class="meta">2 h · 👥</div></div></div>
+      <div class="text">Sunrise trek to Nandi Hills this morning 🌄 Totally worth waking up at 4 am! Who's joining next weekend?</div>
+      <div class="preview"><div class="img" style="background:#bae6fd">⛰️</div></div>
+      <div class="stats"><span>👍❤️ 128</span><span>24 comments</span></div>
+      <div class="acts"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
+    </article>
+
+    <article class="card">
+      <div class="head"><div class="av" style="background:#2563eb">J</div><div><div class="name">Free Recharge Offers India</div><div class="meta">5 h · 🌐</div></div></div>
+      <div class="text">📱 FREE ₹399 recharge for 3 months for all Jio users! Limited offer, only today.
+Share this with 10 WhatsApp groups to activate 👇
+<a href="http://free-recharge-offer.xyz/jio-399">http://free-recharge-offer.xyz/jio-399</a></div>
+      <div class="stats"><span>👍 9.4K</span><span>3.3K shares</span></div>
+      <div class="acts"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
+    </article>
+
+    <article class="card">
+      <div class="head"><div class="av" style="background:#16a34a">D</div><div><div class="name">Daily Tech Digest</div><div class="meta">6 h · 🌐</div></div></div>
+      <div class="text">How to spot a phishing message before it is too late. A good starting point:</div>
+      <a class="preview safe" href="https://en.wikipedia.org/wiki/Phishing"><div class="img" style="background:#dcfce7">📘</div><div class="cap"><span>en.wikipedia.org</span><b>Phishing - Wikipedia</b></div></a>
+      <div class="stats"><span>👍 412</span><span>38 comments</span></div>
+      <div class="acts"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
+    </article>
+
+    <article class="card">
+      <div class="head"><div class="av" style="background:#f59e0b">A</div><div><div class="name">Crypto Guru Amit 🚀</div><div class="meta">8 h · 🌐</div></div></div>
+      <div class="text">I turned ₹10,000 into ₹2,40,000 in one week 💰💰 GUARANTEED double returns in 24 hours. Only 50 slots left!
+Start here 👉 <a href="https://crypto-double-btc.click/invest">https://crypto-double-btc.click/invest</a></div>
+      <div class="stats"><span>👍 1.8K</span><span>607 comments</span></div>
+      <div class="acts"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
+    </article>
+
+    <article class="card">
+      <div class="head"><div class="av" style="background:#0284c7">P</div><div><div class="name">Paytm Cashback Team</div><div class="meta">Sponsored · 🌐</div></div></div>
+      <div class="text">Your Paytm account has ₹5,000 cashback waiting! Log in to claim before midnight.</div>
+      <a class="preview" href="http://paytm-cashback.co.in.verify-user.xyz/login"><div class="img" style="background:#e0f2fe">💳</div><div class="cap"><span>paytm-cashback.co.in.verify-user.xyz</span><b>Claim ₹5,000 cashback</b></div></a>
+      <div class="stats"><span>👍 5.6K</span><span>1.1K shares</span></div>
+      <div class="acts"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
+    </article>
+
+    <article class="card">
+      <div class="head"><div class="av" style="background:#7c3aed">A</div><div><div class="name">Ankit Mehra</div><div class="meta">10 h · 👥</div></div></div>
+      <div class="text">PSA: my uncle almost lost money to a fake KYC call today. If you are ever cheated online, call 1930 or report here:</div>
+      <a class="preview safe" href="https://cybercrime.gov.in"><div class="img" style="background:#ede9fe">🛡️</div><div class="cap"><span>cybercrime.gov.in</span><b>National Cyber Crime Reporting Portal</b></div></a>
+      <div class="stats"><span>👍❤️ 356</span><span>41 comments</span></div>
+      <div class="acts"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
+    </article>
+
+    <article class="card">
+      <div class="head"><div class="av" style="background:#db2777">W</div><div><div class="name">Work From Home Jobs 2026</div><div class="meta">12 h · 🌐</div></div></div>
+      <div class="text">💼 Part-time job: earn ₹3,000/day by liking videos from your phone! No experience, no investment*. Register now:
+<a href="https://parttime-earn-daily.online/register">https://parttime-earn-daily.online/register</a>
+Or join our Telegram: <a href="https://bit.ly/3kYcJob">https://bit.ly/3kYcJob</a></div>
+      <div class="stats"><span>👍 2.7K</span><span>930 comments</span></div>
+      <div class="acts"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
+    </article>
+
+    <article class="card">
+      <div class="head"><div class="av" style="background:#ea580c">A</div><div><div class="name">Amazon Gift Giveaway</div><div class="meta">Sponsored · 🌐</div></div></div>
+      <div class="text">🎁 We are giving away 1,000 Amazon gift cards worth ₹10,000! Answer 3 questions to win.</div>
+      <a class="preview" href="https://amaz0n-giftcard.com/redeem"><div class="img" style="background:#ffedd5">🎁</div><div class="cap"><span>amaz0n-giftcard.com</span><b>Redeem your ₹10,000 gift card</b></div></a>
+      <div class="stats"><span>👍 7.9K</span><span>2.4K shares</span></div>
+      <div class="acts"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
+    </article>
+
+    <article class="card">
+      <div class="head"><div class="av" style="background:#0d9488">R</div><div><div class="name">Rail Travel Tips</div><div class="meta">1 d · 🌐</div></div></div>
+      <div class="text">Diwali train bookings open soon. Book only on the official site:</div>
+      <a class="preview safe" href="https://www.irctc.co.in"><div class="img" style="background:#ccfbf1">🚆</div><div class="cap"><span>irctc.co.in</span><b>IRCTC Next Generation eTicketing</b></div></a>
+      <div class="stats"><span>👍 640</span><span>52 comments</span></div>
+      <div class="acts"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div>
+    </article>
+  </section>
+
+  <aside class="chat-col">
+    <div class="card chat">
+      <h3>Messages</h3>
+      <div class="dm"><div class="av" style="background:#1d4ed8">S</div><div class="body"><div class="who">SBI YONO Rewards</div>Dear customer, your 7,250 reward points expire TODAY. Redeem now: <a href="https://sbi-yono-reward.top/points">sbi-yono-reward.top/points</a></div><span class="unread"></span></div>
+      <div class="dm"><div class="av" style="background:#b91c1c">H</div><div class="body"><div class="who">HDFC Refund Desk</div>Sir, your refund of ₹4,999 is pending. Fill the form to receive it: <a href="http://customer-care-refund.in/hdfc">customer-care-refund.in/hdfc</a></div><span class="unread"></span></div>
+      <div class="dm"><div class="av" style="background:#475569">?</div><div class="body"><div class="who">Unknown</div>Bank KYC pending, account will be frozen. Update here: <a href="http://192.168.10.5/sbi/netbanking/login.php">http://192.168.10.5/sbi/netbanking/login.php</a></div><span class="unread"></span></div>
+      <div class="dm"><div class="av" style="background:#16a34a">M</div><div class="body"><div class="who">Mom</div>Beta, call me when you are free. Dinner at 8? 😊</div></div>
+    </div>
+  </aside>
+</main>
+
+<div class="blocked" id="blocked">Demo page: this is a fake scam link, so it is blocked here. With the SatarkAI extension you see its warning page instead.</div>
+<script>
+  // Safety net for people without the extension: never let a fake scam link from this page open.
+  // The SatarkAI extension handles clicks first (and stops this handler), so with it installed you
+  // see the SatarkAI warning page instead of this message.
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("a[href]");
+    if (!a || a.classList.contains("safe")) return;
+    e.preventDefault();
+    var t = document.getElementById("blocked");
+    t.style.display = "block";
+    clearTimeout(window._bt);
+    window._bt = setTimeout(function () { t.style.display = "none"; }, 3500);
+  });
+</script>
+</body>
+</html>

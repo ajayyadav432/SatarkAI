@@ -13,6 +13,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -45,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,6 +75,8 @@ private val LEVEL_COLOR = mapOf(
     "High" to Color(0xFFF07A4A), "Critical" to Color(0xFFDC3545),
 )
 private val EMERALD = Color(0xFF059669)
+private const val SAMPLE_SCAM =
+    "Dear customer, your SBI account will be blocked today. Update your KYC immediately: http://sbi-kyc-update.xyz/login"
 
 private fun permissionsNeeded(): Array<String> =
     if (Build.VERSION.SDK_INT >= 33) arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.POST_NOTIFICATIONS)
@@ -100,9 +105,7 @@ fun HomeScreen() {
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.background(EMERALD, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 6.dp)) {
-                Text("🛡", fontSize = 18.sp)
-            }
+            Image(painterResource(R.drawable.ic_logo), contentDescription = "SatarkAI logo", modifier = Modifier.size(48.dp))
             Spacer(Modifier.width(10.dp))
             Column {
                 Text("SatarkAI SMS Guard", fontWeight = FontWeight.Bold, fontSize = 20.sp)
@@ -132,6 +135,25 @@ fun HomeScreen() {
             Spacer(Modifier.width(12.dp))
             Text(status, fontSize = 14.sp)
         }
+
+        OutlinedButton(onClick = {
+            status = "Sending sample…"
+            Thread {
+                // Same path as a real SMS (laptop analysis + notification), clearly marked as a sample.
+                val sender = "Sample (test)"
+                val item = try {
+                    val r = SatarkClient.checkSms(store.serverUrl, store.pairingCode, sender, SAMPLE_SCAM, "sample-${System.currentTimeMillis()}")
+                    val reasons = r.optJSONArray("reasons")
+                    Checked(System.currentTimeMillis(), sender, SAMPLE_SCAM, r.optString("level"), r.optInt("score"),
+                        r.optString("category"), if (reasons != null && reasons.length() > 0) reasons.getString(0) else null, null)
+                } catch (e: Exception) {
+                    Checked(System.currentTimeMillis(), sender, SAMPLE_SCAM, null, null, null, null, e.message ?: e.javaClass.simpleName)
+                }
+                store.add(item)
+                Notifier.show(context, item)
+                (context as? ComponentActivity)?.runOnUiThread { recent = store.recent(); status = if (item.level != null) "✓ Sample checked" else "✗ Cannot reach the laptop" }
+            }.start()
+        }, modifier = Modifier.fillMaxWidth()) { Text("Try a sample scam SMS") }
 
         Text("Recently checked", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         if (recent.isEmpty()) {

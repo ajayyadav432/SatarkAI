@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Demo inbox - SatarkAI Link Guard test</title>
+<style>
+body { font: 16px/1.5 system-ui, sans-serif; background: #f3f7f5; color: #0b1f18; margin: 0; padding: 32px; }
+.card { max-width: 720px; margin: 0 auto 16px; background: #fff; border-radius: 14px; padding: 18px 22px; box-shadow: 0 8px 24px -10px rgba(0,0,0,.2); }
+h1 { max-width: 720px; margin: 0 auto 18px; font-size: 22px; }
+.from { font-size: 13px; color: #627a70; } a { color: #2563eb; font-weight: 600; }
+.tag { float: right; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 99px; }
+.scam { background: #fde2e4; color: #b4232f; } .safe { background: #dcfce7; color: #166534; }
+</style></head><body>
+<h1>📥 Demo inbox (test page for the SatarkAI Link Guard extension)</h1>
+<p style="max-width:720px;margin:-8px auto 16px"><a href="social.html" class="safe">Open the fake social network (Chatter) →</a></p>
+<div class="card"><span class="tag scam">fake scam</span><div class="from">From: 98765XXXXX</div>
+<p>Dear customer, your SBI account will be blocked today. Update your KYC now:
+<a id="scam1" href="http://sbi-kyc-update.xyz/login">http://sbi-kyc-update.xyz/login</a></p></div>
+<div class="card"><span class="tag scam">fake scam</span><div class="from">From: PayPal Security</div>
+<p>Your account is limited. Verify here: <a id="scam2" href="http://paypa1.com/signin?account=verify">paypa1.com/signin</a></p></div>
+<div class="card"><span class="tag safe">real site</span><div class="from">From: a friend</div>
+<p>Read about phishing here: <a id="safe1" class="safe" href="https://en.wikipedia.org/wiki/Phishing">en.wikipedia.org/wiki/Phishing</a></p></div>
+<script>
+  // Without the extension, fake scam links on this demo page are blocked instead of opened.
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("a[href]");
+    if (a && !a.classList.contains("safe")) { e.preventDefault(); alert("Demo page: fake scam link blocked. With the SatarkAI extension you see its warning page instead."); }
+  });
+</script>
+</body></html>

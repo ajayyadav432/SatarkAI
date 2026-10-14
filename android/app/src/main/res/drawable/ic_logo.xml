@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SatarkAI logo: a shield with a watchful eye (same as docs/logo.svg). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64">
+    <path android:pathData="M32,4 L9,12.5 v17 C9,45 19,56.5 32,60 c13,-3.5 23,-15 23,-30.5 v-17 L32,4 Z">
+      <aapt:attr name="android:fillColor">
+        <gradient android:type="linear" android:startX="9" android:startY="4" android:endX="55" android:endY="60">
+          <item android:offset="0" android:color="#FF6366F1" />
+          <item android:offset="1" android:color="#FF0EA5E9" />
+        </gradient>
+      </aapt:attr>
+    </path>
+    <path android:pathData="M32,4 L9,12.5 v17 C9,45 19,56.5 32,60 V4 Z" android:fillColor="#1FFFFFFF" />
+    <path android:pathData="M14.5,32.5 c4.6,-7.4 10.4,-11 17.5,-11 s12.9,3.6 17.5,11 c-4.6,7.4 -10.4,11 -17.5,11 s-12.9,-3.6 -17.5,-11 Z" android:fillColor="#FFFFFFFF" />
+    <path android:pathData="M25.4,32.5 a6.6,6.6 0 1,0 13.2,0 a6.6,6.6 0 1,0 -13.2,0 Z" android:fillColor="#FF1E1B4B" />
+    <path android:pathData="M29.4,32.5 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z" android:fillColor="#FF38BDF8" />
+    <path android:pathData="M33.1,29.9 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0 Z" android:fillColor="#FFFFFFFF" />
+</vector>

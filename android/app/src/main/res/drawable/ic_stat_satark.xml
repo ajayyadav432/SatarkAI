@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon for notifications. Android uses only its shape (alpha), so it is one colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
+    <path android:fillType="evenOdd" android:fillColor="#FFFFFFFF" android:pathData="M32,4 L9,12.5 v17 C9,45 19,56.5 32,60 c13,-3.5 23,-15 23,-30.5 v-17 L32,4 Z M14.5,32.5 c4.6,-7.4 10.4,-11 17.5,-11 s12.9,3.6 17.5,11 c-4.6,7.4 -10.4,11 -17.5,11 s-12.9,-3.6 -17.5,-11 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M25.4,32.5 a6.6,6.6 0 1,0 13.2,0 a6.6,6.6 0 1,0 -13.2,0 Z" />
+</vector>

@@ -5,6 +5,7 @@
 #   ./run.sh train    download the datasets and retrain the models
 #   ./run.sh seed     add demo cases so the dashboard is not empty
 #   ./run.sh unseed   remove the demo cases again
+#   ./run.sh demo     serve the demo web pages (fake social network) on port 8765
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -39,11 +40,15 @@ case "${1:-serve}" in
   seed)
     exec "$PY" scripts/seed_demo.py
     ;;
+  demo)
+    echo "Demo pages with fake scam links on http://127.0.0.1:8765  (Ctrl+C to stop)"
+    exec "$PY" -m http.server 8765 --bind 127.0.0.1 --directory demo
+    ;;
   unseed)
     exec "$PY" scripts/seed_demo.py --remove
     ;;
   *)
-    echo "Usage: ./run.sh [serve|test|train|seed|unseed]"
+    echo "Usage: ./run.sh [serve|test|train|seed|unseed|demo]"
     exit 2
     ;;
 esac
