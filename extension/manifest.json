@@ -1,17 +1,50 @@
 {
   "manifest_version": 3,
   "name": "SatarkAI Link Guard",
-  "version": "1.0.0",
-  "description": "Checks a link with the local SatarkAI app before it opens, and shows a warning page for risky links.",
+  "version": "1.1.0",
+  "description": "Checks every page, link and Gmail e-mail with the local SatarkAI app, and warns before anything risky.",
   "permissions": [],
-  "host_permissions": ["http://127.0.0.1:8000/*"],
-  "background": { "service_worker": "background.js" },
-  "content_scripts": [
-    { "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "run_at": "document_start", "all_frames": false }
+  "host_permissions": [
+    "http://127.0.0.1:8000/*"
   ],
-  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://mail.google.com/*"
+      ],
+      "js": [
+        "gmail.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "action": {
     "default_title": "SatarkAI Link Guard",
-    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png" }
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
   }
 }

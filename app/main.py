@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app import chat, config, db
+from app import chat, config, db, ingest, mailwatch
 from app.analysis import brands, models, rules
 from app.analysis.extract import normalise_url
 from app.analysis.pipeline import analyze, analyze_url
@@ -27,6 +27,7 @@ async def lifespan(_: FastAPI):
     db.init_db()
     # Load the models once at start-up, so the first request is not slow.
     analyze("warm up http://example.com", channel="sms")
+    mailwatch.start()
     yield
 
 
@@ -37,8 +38,17 @@ CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' 
        "connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
 
 
+# In LAN mode (SATARK_HOST=0.0.0.0, so the phone can reach the laptop) other devices may only call
+# the ingest endpoint, with the pairing code. History, dashboard and the rest stay on this computer.
+LAN_ALLOWED = {("POST", "/api/ingest"), ("GET", "/api/health")}
+
+
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
+    client = request.client.host if request.client else ""
+    if config.LAN_MODE and client not in config.LOOPBACK:
+        if (request.method, request.url.path) not in LAN_ALLOWED:
+            return JSONResponse({"detail": "Only the SatarkAI phone app may connect from the network."}, status_code=403)
     response = await call_next(request)
     response.headers["Content-Security-Policy"] = CSP
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -90,6 +100,22 @@ class ChatIn(BaseModel):
     history: list[ChatTurn] = Field(default_factory=list, max_length=8)
     context: ChatContext | None = None
     faq_id: str | None = Field(default=None, max_length=40)
+
+
+class IngestIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=1, max_length=config.MAX_TEXT_CHARS)
+    channel: Literal["sms", "email", "social", "url"]
+    sender: str | None = Field(default=None, max_length=config.MAX_SENDER_CHARS)
+    source: Literal["sms-app", "gmail-web"]
+    ref: str | None = Field(default=None, max_length=300)
+
+
+class UrlsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    urls: list[str] = Field(min_length=1, max_length=200)
 
 
 class CaseUpdate(BaseModel):
@@ -150,6 +176,45 @@ def api_chat(body: ChatIn):
         result = analyze(c.text, channel=c.channel, sender=c.sender, lookup=False)
     history = [t.model_dump() for t in body.history]
     return chat.answer(body.message, history, result, faq_id=body.faq_id)
+
+
+@app.post("/api/ingest")
+def api_ingest(body: IngestIn, request: Request):
+    """A message that arrived by itself: SMS on the phone, or an e-mail opened in Gmail.
+    From another device the pairing code (header X-Satark-Token) is required."""
+    client = request.client.host if request.client else ""
+    if client not in config.LOOPBACK and not ingest.token_ok(request.headers.get("x-satark-token")):
+        raise HTTPException(status_code=401, detail="Wrong or missing pairing code.")
+    if not body.text.strip():
+        raise HTTPException(status_code=422, detail="text must not be empty")
+    return ingest.ingest(body.text, body.channel, body.sender, body.source, ref=body.ref)
+
+
+@app.get("/api/alerts")
+def api_alerts(after: int = Query(default=0, ge=0)):
+    """Risky messages that arrived automatically, newer than `after`. The web app polls this."""
+    return ingest.alerts_after(after)
+
+
+@app.get("/api/auto-status")
+def api_auto_status():
+    return {"lan_mode": config.LAN_MODE, "pairing_code_set": bool(ingest.token()),
+            "mail_watcher": {k: mailwatch.status[k] for k in ("enabled", "running", "user", "last_check", "checked", "error")}}
+
+
+@app.post("/api/check-urls")
+def api_check_urls(body: UrlsIn):
+    """Risk of many links at once (the browser extension marks risky links on a page). Nothing is saved."""
+    out = {}
+    for u in dict.fromkeys(body.urls):
+        if not u.lower().startswith(("http://", "https://")):   # javascript:, mailto:, ... are not links to check
+            continue
+        url = normalise_url(u[: config.MAX_URL_CHARS])
+        r = analyze_url(url, raw=u, lookup=False)
+        out[u] = {"level": r["level"], "score": r["score"],
+                  "reason": r["factors"][0]["title"] if r.get("factors") else None,
+                  "needs_warning": level_rank(r["level"]) >= level_rank(config.WARN_FROM_LEVEL)}
+    return {"results": out}
 
 
 @app.get("/api/check-url")

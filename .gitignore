@@ -8,3 +8,4 @@ data/*.db-*
 *.log
 *.pdf
 .env
+data/mailwatch_state.json

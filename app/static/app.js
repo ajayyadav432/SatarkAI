@@ -166,8 +166,8 @@
     metaBits.push(pill((CHANNEL_LABEL[r.channel] || r.channel) + (r.channel_detected ? " (detected)" : "")));
     if (caseId) metaBits.push(pill("Case #" + caseId));
     const actions = h("div", { class: "verdict-actions" },
-      h("button", { class: "btn small", type: "button", onclick: () => openChat("Why is this rated " + r.level + "?") }, "💬 Ask why"),
-      h("button", { class: "btn small", type: "button", onclick: () => copyReport(r) }, "📋 Copy report"));
+      h("button", { class: "btn small", type: "button", onclick: () => openChat("Why is this rated " + r.level + "?") }, "Ask why"),
+      h("button", { class: "btn small", type: "button", onclick: () => copyReport(r) }, "Copy report"));
     return h("div", { class: "card verdict-card v-" + r.level, id: "sec-verdict" },
       h("div", { class: "verdict" },
         h("div", { class: "score-box", role: "img", "aria-label": "Risk score " + r.score + " out of 100" },
@@ -179,7 +179,7 @@
           h("div", { class: "verdict-meta" }, metaBits),
           h("h2", { text: r.summary }),
           meter(r.score, r.level),
-          r.elapsed_ms !== undefined ? h("div", { class: "elapsed", text: "Analysed in " + r.elapsed_ms + " ms on this computer" }) : null)),
+          r.elapsed_ms !== undefined ? h("div", { class: "elapsed", text: r.elapsed_ms + " ms · offline" }) : null)),
       h("div", { class: "advice-box" },
         h("h3", { text: "What to do" }),
         h("ul", { class: "advice" }, (r.advice || []).map((a) => h("li", { text: a })))),
@@ -213,7 +213,7 @@
     const card = h("div", { class: "card", id: "sec-message" }, h("h3", { text: "Message" }));
     if (r.sender) card.append(h("p", { class: "small muted" }, "Sender: ", tag(r.sender)));
     card.append(highlightedMessage(r.text || "", r.highlights));
-    if (kinds.size) card.append(key, h("p", { class: "small muted", text: "Hover over a highlight to see why it is marked." }));
+    if (kinds.size) card.append(key);
     return card;
   }
 
@@ -242,9 +242,8 @@
     });
     if (more) card.append(more);
     const terms = r.factors.map((f) => "(1 - " + (f.points / 100).toFixed(2) + ")").join(" x ");
-    card.append(h("div", { class: "formula" },
-      "score = 100 x [ 1 - " + terms + " ] = " + (r.cap_applied ? r.score_uncapped + ", limited to " + r.score : r.score),
-      h("div", { class: "small", text: "Each indicator has a weight between 0 and 1. Independent indicators add up; the score can never pass 100." })));
+    card.append(h("details", {}, h("summary", { text: "How the score is calculated" }), h("div", { class: "formula" },
+      "score = 100 x [ 1 - " + terms + " ] = " + (r.cap_applied ? r.score_uncapped + ", limited to " + r.score : r.score))));
     return card;
   }
 
@@ -275,7 +274,7 @@
   function linksCard(r) {
     if (!r.urls || !r.urls.length) return null;
     const card = h("div", { class: "card", id: "sec-links" }, h("h3", { text: "Links found (" + r.urls.length + ")" }),
-      h("p", { class: "small muted", text: "Links are shown in a safe, non-clickable form. Opening one goes through a warning page first." }));
+      h("p", { class: "small muted", text: "Shown in a safe, non-clickable form." }));
     for (const u of r.urls) {
       const facts = [];
       if (u.valid) {
@@ -404,10 +403,10 @@
     let skipped = false;
     const skip = h("button", { type: "button", class: "btn small", onclick: () => { skipped = true; } }, "Skip");
     out.replaceChildren(h("div", { class: "card scan-card" },
-      h("div", { class: "scan-head" }, h("h2", {}, h("span", { class: "radar", "aria-hidden": "true" }), "Scanning…"), skip),
+      h("div", { class: "scan-head" }, h("h2", {}, h("span", { class: "radar", "aria-hidden": "true" }), "Scanning"), skip),
       h("div", { class: "scan-progress" }, bar),
       h("ol", { class: "pipeline scan-steps" }, rows),
-      h("p", { class: "scan-note", text: "The analysis took " + r.elapsed_ms + " ms. The steps are shown slowly so you can follow them." })));
+      h("p", { class: "scan-note", text: "Done in " + r.elapsed_ms + " ms · slowed down so you can follow" })));
     const findings = stageFindings(r);
     for (let i = 0; i < rows.length && !skipped; i++) {
       rows[i].classList.add("active");
@@ -431,19 +430,17 @@
     const host = $("#hero-stats");
     const tile = (label, note) => {
       const b = h("b", { text: "–" });
-      host.append(h("div", { class: "hstat" }, b, h("span", { text: label }), note ? h("small", { text: note }) : null));
+      host.append(h("div", { class: "hstat", title: note || "" }, b, h("span", { text: label })));
       return b;
     };
     try {
       const [s, card] = await Promise.all([api("/api/stats?days=90"), api("/api/model-card")]);
       const k = s.kpis;
       host.replaceChildren();
-      countUp(tile("messages checked", "last 90 days" + (k.demo ? ", incl. " + k.demo + " demo cases" : "")), k.total);
-      countUp(tile("rated High or Critical", k.high_risk_share + "% of them"), k.high_risk);
+      countUp(tile("checked", "Last 90 days" + (k.demo ? ", including " + k.demo + " demo cases" : "")), k.total);
+      countUp(tile("high-risk", k.high_risk_share + "% rated High or Critical, last 90 days"), k.high_risk);
       const m = card.metrics;
-      if (m) countUp(tile("text model accuracy", "held-out SMS test set"), 100 * m.text_model.channels.sms.test.accuracy, "%", 1);
-      const patterns = card.rules.reduce((a, g) => a + g.patterns.en + g.patterns.hinglish + g.patterns.hi, 0);
-      countUp(tile("scam patterns", "English, Hinglish and Hindi"), patterns);
+      if (m) countUp(tile("accuracy", "Text model on held-out SMS test set"), 100 * m.text_model.channels.sms.test.accuracy, "%", 1);
     } catch (err) { host.hidden = true; }
   }
 
@@ -460,7 +457,6 @@
       try { text.value = await navigator.clipboard.readText(); updateCount(); text.focus(); }
       catch (e) { toast("The browser blocked clipboard access. Press Ctrl+V in the box instead."); text.focus(); }
     });
-    $("#pipeline-preview").replaceChildren(...pipelineList(false));
     loadHeroStats();
 
     async function run() {
@@ -514,8 +510,7 @@
         } }, h("span", { class: "dot " + s.kind, "aria-hidden": "true" }), s.label,
         h("span", { class: "muted small", text: s.kind === "scam" ? "scam" : "genuine" })));
     }
-    $("#level-legend").replaceChildren(...LEVELS.map((l) =>
-      h("li", {}, levelBadge(l), h("span", { class: "muted small", text: LEVEL_HINT[l] }))));
+    $("#level-legend").replaceChildren(...LEVELS.map((l) => h("li", {}, levelBadge(l))));
   }
 
   // ---------- History view ----------
@@ -668,7 +663,7 @@
   }
 
   function chartCard(title, sub, body) {
-    return h("div", { class: "card chart-card" }, h("h2", { text: title }), h("div", { class: "sub", text: sub }), body);
+    return h("div", { class: "card chart-card" }, h("h2", { text: title }), sub ? h("div", { class: "sub", text: sub }) : null, body);
   }
 
   /** Donut of cases per risk level, drawn as SVG circles (one segment per level). */
@@ -753,36 +748,36 @@
     const k = s.kpis, body = $("#dashboard-body");
     const demo = $("#demo-flag");
     demo.hidden = !k.demo;
-    if (k.demo) demo.textContent = "Includes " + fmtInt(k.demo) + " demo cases (source: demo-seed)";
-    $("#dash-sub").textContent = "Cases analysed in the last " + s.days + " days. " + fmtInt(k.total_all_time) + " cases in total.";
+    if (k.demo) demo.textContent = "Includes " + fmtInt(k.demo) + " demo cases";
+    $("#dash-sub").textContent = fmtInt(k.total_all_time) + " cases in total";
 
     const kpis = h("div", { class: "kpis" },
-      kpi("Cases analysed", fmtInt(k.total), "last " + s.days + " days", true),
-      kpi("High or Critical", fmtInt(k.high_risk), k.high_risk_share + "% of all cases", false, k.high_risk ? "alert" : ""),
-      kpi("Waiting for review", fmtInt(k.needs_review), "high-risk cases with status New"),
-      kpi("Analysed today", fmtInt(k.today), ""),
-      kpi("Average risk score", String(k.avg_score), "out of 100"),
-      kpi("Analyst verdicts", fmtInt(k.confirmed) + " / " + fmtInt(k.false_positives), "confirmed scams / false alarms"));
+      kpi("Cases", fmtInt(k.total), "last " + s.days + " days", true),
+      kpi("High or Critical", fmtInt(k.high_risk), k.high_risk_share + "%", false, k.high_risk ? "alert" : ""),
+      kpi("To review", fmtInt(k.needs_review), ""),
+      kpi("Today", fmtInt(k.today), ""),
+      kpi("Avg. score", String(k.avg_score), ""),
+      kpi("Analyst verdicts", fmtInt(k.confirmed) + " / " + fmtInt(k.false_positives), "confirmed / false alarm"));
 
     const canvas = h("canvas", { role: "img", "aria-label": "Cases per day, high-risk cases against all other cases" });
     const legend = h("div", { class: "chart-legend" });
     const tableHost = h("div");
-    const trendCard = chartCard("Cases per day", "High-risk cases against everything else",
+    const trendCard = chartCard("Cases per day", "",
       [legend, h("div", { class: "chart-box" }, canvas), tableHost]);
 
     const levelItems = s.levels.map((l) => ({ name: l.level, value: l.n, level: l.level, node: levelBadge(l.level) }));
-    const levelsCard = chartCard("Risk levels", "How many cases reached each level",
+    const levelsCard = chartCard("Risk levels", "",
       k.total ? h("div", { class: "donut-wrap" }, donut(s.levels, k.total), barList(levelItems, { unit: "cases" }))
         : h("div", { class: "empty-chart", text: "No cases in this period." }));
 
-    const cats = chartCard("Scam categories", "Cases by type of scam (cases with no category are left out)",
+    const cats = chartCard("Scam categories", "",
       barList(s.categories.map((c) => ({ name: c.category, value: c.n })), { unit: "cases", empty: "No scam categories yet." }));
-    const facts = chartCard("Most common indicators", "Reasons that appeared in the most cases",
+    const facts = chartCard("Most common warning signs", "",
       barList(s.factors.map((f) => ({ name: f.title, value: f.n })), { unit: "cases", empty: "No indicators yet." }));
-    const brandsCard = chartCard("Impersonated organisations", "Named in cases rated Medium or higher",
+    const brandsCard = chartCard("Impersonated organisations", "Medium risk or higher",
       barList(s.brands.map((b) => ({ name: b.brand, value: b.n })), { unit: "cases", empty: "No organisations named yet." }));
 
-    const domains = chartCard("Suspicious domains", "Seen in cases rated Medium or higher",
+    const domains = chartCard("Suspicious domains", "Medium risk or higher",
       s.domains.length ? h("div", { class: "table-wrap" }, h("table", { class: "data" },
         h("thead", {}, h("tr", {}, h("th", { text: "Domain" }), h("th", { class: "num", text: "Cases" }),
           h("th", { class: "num", text: "Top score" }))),
@@ -791,7 +786,7 @@
           h("td", { class: "num", text: String(d.n) }), h("td", { class: "num", text: String(d.max_score) }))))))
         : h("div", { class: "empty-chart", text: "No suspicious domains yet." }));
 
-    const recent = chartCard("Latest high-risk cases", "Click a row to open the case",
+    const recent = chartCard("Latest high-risk cases", "",
       s.recent_high_risk.length ? h("div", { class: "table-wrap" }, h("table", { class: "data" },
         h("thead", {}, h("tr", {}, h("th", { text: "Risk" }), h("th", { text: "Category and message" }))),
         h("tbody", {}, s.recent_high_risk.map((c) => h("tr", { class: "clickable", tabindex: "0",
@@ -800,7 +795,7 @@
           h("td", {}, h("b", { text: c.category }), h("div", { class: "clamp muted small", text: c.text })))))))
         : h("div", { class: "empty-chart", text: "No high-risk cases in this period." }));
 
-    const channels = chartCard("By message type", "All cases, and how many were High or Critical",
+    const channels = chartCard("By message type", "",
       s.channels.length ? h("div", { class: "table-wrap" }, h("table", { class: "data" },
         h("thead", {}, h("tr", {}, h("th", { text: "Type" }), h("th", { class: "num", text: "Cases" }), h("th", { class: "num", text: "High-risk" }))),
         h("tbody", {}, s.channels.map((c) => h("tr", {},
@@ -985,11 +980,12 @@
   const chatState = { history: [], greeted: false, busy: false };
   const SOURCE_NOTE = { result: "From your scan result", faq: "From the built-in safety guide", fallback: "Built-in assistant" };
 
-  /** Plain-text answer to nodes: '- ' lines become a list, **bold** becomes <b>. Text only, never HTML. */
+  /** Plain-text answer to nodes: '- ' lines become a list, **bold** and `code` are styled. Text only, never HTML. */
   function richText(text) {
     const box = h("div", {});
     let list = null;
-    const inline = (s) => s.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? h("b", { text: part }) : part));
+    const code = (s) => s.split(/`([^`]+)`/g).map((part, i) => (i % 2 ? h("code", { text: part }) : part));
+    const inline = (s) => s.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? h("b", {}, code(part)) : code(part)));
     for (const raw of String(text).split("\n")) {
       const line = raw.trim();
       if (!line) { list = null; continue; }
@@ -1065,7 +1061,7 @@
     $("#chat-fab").setAttribute("aria-expanded", "true");
     if (!chatState.greeted) {
       chatState.greeted = true;
-      chatBubble("bot", "Namaste! I am the SatarkAI assistant. Ask me about your scan result, or about any scam: KYC, UPI, digital arrest, fake jobs, lost money and more.");
+      chatBubble("bot", "Namaste! Ask me about your result or any scam.");
     }
     refreshChatSuggestions();
     if (question) sendChat(question); else $("#chat-input").focus();
@@ -1075,8 +1071,8 @@
     const ai = META.assistant && META.assistant.ai;
     $("#chat-mode").textContent = ai ? "AI mode · Groq" : "Offline mode";
     $("#chat-foot").textContent = ai
-      ? "Answers are written by an AI (Groq) and can be wrong. Your question and a summary of the scan (not the full message) are sent to Groq."
-      : "Offline: answers come from your scan result and a built-in safety guide. Nothing leaves this computer.";
+      ? "AI answers can be wrong. Groq gets your question and a scan summary, never the message."
+      : "Offline answers from your result and a safety guide.";
     $("#chat-fab").addEventListener("click", () => openChat());
     $("#chat-close").addEventListener("click", () => {
       $("#chat-panel").hidden = true;
@@ -1091,6 +1087,42 @@
       input.value = "";
       sendChat(q);
     });
+  }
+
+  // ---------- live alerts (messages checked automatically) ----------
+
+  const SOURCE_NAME = { "sms-app": "📱 SMS on phone", "email-watch": "📧 New e-mail", "gmail-web": "📧 Gmail" };
+  let alertSeq = null;
+
+  function showAlert(a) {
+    const host = $("#alert-stack");
+    const close = h("button", { type: "button", class: "icon-btn", "aria-label": "Dismiss", text: "✕" });
+    const card = h("div", { class: "alert-card lvl-border-" + a.level, role: "alert" },
+      h("div", { class: "alert-top" },
+        h("span", { class: "alert-src", text: SOURCE_NAME[a.source] || a.source }), close),
+      h("div", { class: "alert-main" }, levelBadge(a.level), h("b", { text: String(a.score) }),
+        a.category && a.category !== "None" ? h("span", { class: "muted small", text: a.category }) : null),
+      a.sender ? h("div", { class: "small muted", text: "From " + a.sender }) : null,
+      h("div", { class: "alert-snippet", text: a.snippet }),
+      h("button", { type: "button", class: "btn small primary", onclick: () => { card.remove(); openCase(a.case_id); } }, "Open case"));
+    close.addEventListener("click", () => card.remove());
+    host.prepend(card);
+    while (host.children.length > 3) host.lastChild.remove();
+    setTimeout(() => card.remove(), 30000);
+    if (window.Notification && Notification.permission === "granted" && document.hidden) {
+      try { new Notification("SatarkAI: " + a.level + " risk", { body: (SOURCE_NAME[a.source] || "") + "\n" + a.snippet, icon: "/static/favicon.svg" }); }
+      catch (e) { /* ignore */ }
+    }
+  }
+
+  async function pollAlerts() {
+    try {
+      const r = await api("/api/alerts?after=" + (alertSeq || 0));
+      if (alertSeq !== null) r.alerts.forEach(showAlert);   // the first poll only learns where the feed is
+      alertSeq = r.latest;
+      if (r.alerts.length && alertSeq !== null && !$("#view-dashboard").hidden) loadDashboard();
+    } catch (e) { /* server restarting: try again next time */ }
+    setTimeout(pollAlerts, 3000);
   }
 
   // ---------- routing, theme, start-up ----------
@@ -1129,12 +1161,15 @@
     try { META = await api("/api/meta"); }
     catch (err) { toast("Cannot reach the server: " + err.message); return; }
     $("#app-name").textContent = META.app;
-    $("#app-tagline").textContent = META.tagline;
     $("#foot-text").textContent = META.app + " " + META.version;
     document.title = META.app + " - " + META.tagline;
     initAnalyze();
     initHistory();
     initChat();
+    pollAlerts();
+    if (window.Notification && Notification.permission === "default") {
+      document.addEventListener("click", () => { try { Notification.requestPermission(); } catch (e) { /* ignore */ } }, { once: true });
+    }
     for (const r of $$("input[name=range]")) r.addEventListener("change", loadDashboard);
     $("#case-close").addEventListener("click", () => $("#case-dialog").close());
     $("#case-dialog").addEventListener("click", (ev) => { if (ev.target === ev.currentTarget) ev.currentTarget.close(); });

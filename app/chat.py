@@ -59,7 +59,7 @@ def _dotenv() -> dict:
 def settings() -> dict:
     env = _dotenv()
     get = lambda k, d=None: os.environ.get(k) or env.get(k) or d  # noqa: E731
-    return {"key": get("GROQ_API_KEY"), "model": get("GROQ_MODEL", "llama-3.3-70b-versatile")}
+    return {"key": get("GROQ_API_KEY"), "model": get("GROQ_MODEL", "qwen/qwen3.8-27b")}
 
 
 def status() -> dict:

@@ -15,7 +15,7 @@
         <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
         <path d="m8.5 12 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span class="brand-text"><strong id="app-name">SatarkAI</strong><small id="app-tagline">Phishing, scam message and malicious URL detection</small></span>
+      <span class="brand-text"><strong id="app-name">SatarkAI</strong></span>
     </a>
     <nav class="tabs" aria-label="Sections">
       <a href="#analyze" data-view="analyze">Analyze</a>
@@ -33,13 +33,11 @@
     <section id="view-analyze" class="view">
       <div class="hero-band">
         <div class="hero-text">
-          <span class="eyebrow"><span class="pulse" aria-hidden="true"></span> AI scam &amp; phishing detection</span>
-          <h1 class="hero-title">Got a suspicious message?<br><span class="grad">Check it before you click.</span></h1>
-          <p class="hero-sub">Paste any SMS, e-mail, WhatsApp message or link. SatarkAI checks the links, the wording and the sender, and explains every reason behind its verdict.</p>
+          <h1 class="hero-title">Check it <span class="grad">before you click.</span></h1>
           <ul class="hero-badges">
-            <li><span aria-hidden="true">&#x1F512;</span> Runs on this computer</li>
-            <li><span aria-hidden="true">&#x1F50E;</span> Explains every score</li>
-            <li><span aria-hidden="true">&#x1F5E3;</span> English, Hindi, Hinglish</li>
+            <li>Offline</li>
+            <li>Explains every score</li>
+            <li>English · हिंदी · Hinglish</li>
           </ul>
         </div>
         <div class="hero-stats" id="hero-stats" aria-live="polite"></div>
@@ -47,11 +45,10 @@
 
       <div class="analyze-grid">
         <form id="analyze-form" class="card input-card" autocomplete="off">
-          <h2 class="card-title">Check a message or link</h2>
-          <p class="muted small">Nothing is opened or sent anywhere: the analysis runs on this computer.</p>
+          <h2 class="card-title">Message or link</h2>
 
           <fieldset class="type-tiles" id="channel-group">
-            <legend>Type</legend>
+            <legend class="sr-only">Type</legend>
             <label><input type="radio" name="channel" value="auto" checked><span><i aria-hidden="true">&#x2728;</i>Auto</span></label>
             <label><input type="radio" name="channel" value="sms"><span><i aria-hidden="true">&#x1F4AC;</i>SMS</span></label>
             <label><input type="radio" name="channel" value="email"><span><i aria-hidden="true">&#x2709;&#xFE0F;</i>E-mail</span></label>
@@ -60,35 +57,35 @@
           </fieldset>
 
           <label class="field">
-            <span>Message</span>
+            <span class="sr-only">Message</span>
             <span class="textarea-wrap">
               <textarea id="text" name="text" rows="8" maxlength="20000" required
-                placeholder="Paste the message here..."></textarea>
+                placeholder="Paste an SMS, e-mail, chat message or link…"></textarea>
               <button type="button" class="paste-btn" id="paste-btn" title="Paste from clipboard">Paste</button>
             </span>
-            <small class="muted"><span id="char-count">0</span> / 20,000 characters &middot; Ctrl+Enter to analyze</small>
+            <small class="muted counter"><span id="char-count">0</span> / 20,000</small>
           </label>
 
           <label class="field">
-            <span>Sender <small class="muted">(optional: phone number, sender ID or e-mail address)</small></span>
-            <input id="sender" name="sender" type="text" maxlength="320" placeholder="e.g. 9876543210, AD-HDFCBK or support@example.com">
+            <span class="sr-only">Sender</span>
+            <input id="sender" name="sender" type="text" maxlength="320" placeholder="Sender (optional): 98765…, AD-HDFCBK, name@mail.com">
           </label>
 
           <div class="options">
             <label class="check"><input type="checkbox" id="opt-save" checked> <span>Save to history</span></label>
             <label class="check" title="Asks DNS and the public RDAP service how old the domain is. Needs internet. The link itself is never opened.">
-              <input type="checkbox" id="opt-lookup"> <span>Live domain lookup (needs internet)</span></label>
+              <input type="checkbox" id="opt-lookup"> <span>Live domain check</span></label>
           </div>
 
           <div class="actions">
-            <button type="submit" class="btn primary big" id="analyze-btn">Analyze</button>
+            <button type="submit" class="btn primary big" id="analyze-btn" title="Ctrl+Enter">Analyze</button>
             <button type="button" class="btn" id="clear-btn">Clear</button>
             <label class="check fast-toggle" title="Show the result at once, without the step-by-step scan">
-              <input type="checkbox" id="opt-fast"> <span>Instant result</span></label>
+              <input type="checkbox" id="opt-fast"> <span>Skip animation</span></label>
           </div>
 
           <details class="samples" id="samples" open>
-            <summary><span>Try an example</span> <small class="muted">written by hand for this demo</small></summary>
+            <summary title="Examples were written by hand for this demo">Try an example</summary>
             <div id="sample-list" class="chips"></div>
           </details>
         </form>
@@ -98,11 +95,9 @@
             <div class="empty-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="40" height="40"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
-            <h2>Your result appears here</h2>
-            <p class="muted">Every message goes through the same checks:</p>
-            <ol class="pipeline" id="pipeline-preview"></ol>
-            <h3 class="legend-head">Risk levels</h3>
-            <ul class="legend-levels" id="level-legend"></ul>
+            <h2>Paste a message to start</h2>
+            <p class="muted">Or pick an example. You get a score from 0 to 100 and every reason behind it.</p>
+            <ul class="legend-levels inline" id="level-legend"></ul>
           </div>
         </div>
       </div>
@@ -113,7 +108,7 @@
       <div class="view-head">
         <div>
           <h1>History</h1>
-          <p class="muted">Every analysed case. Search the message text, links, domains, phone numbers, UPI IDs and analyst notes.</p>
+          <p class="muted">Search text, links, numbers, UPI IDs and notes.</p>
         </div>
         <div class="head-actions">
           <label class="btn" for="bulk-file" title="CSV with a 'text' column, or TXT with one message per line">Bulk upload</label>
@@ -165,7 +160,7 @@
       <div class="view-head">
         <div>
           <h1>Security dashboard</h1>
-          <p class="muted" id="dash-sub">What has been analysed, and what the scams look like.</p>
+          <p class="muted" id="dash-sub"></p>
         </div>
       </div>
       <div class="filter-row" role="group" aria-label="Time range">
@@ -185,7 +180,7 @@
       <div class="view-head">
         <div>
           <h1>How it works</h1>
-          <p class="muted">Method, data, measured accuracy and known limits. Every number on this page is read from <code>models/metrics.json</code>, which the training script writes.</p>
+          <p class="muted">Method, data, measured accuracy and known limits.</p>
         </div>
       </div>
       <div id="about-body" class="about"></div>
@@ -220,6 +215,7 @@
     <p class="chat-foot" id="chat-foot"></p>
   </section>
 
+  <div id="alert-stack" class="alert-stack" aria-live="assertive"></div>
   <div id="toast" role="status" aria-live="polite" hidden></div>
   <footer class="foot muted small">
     <span id="foot-text">SatarkAI</span> &middot; analysis runs fully offline &middot; IEEE-IGNITE Hackathon 2026, SKIT025

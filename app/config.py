@@ -19,6 +19,28 @@ DB_PATH = Path(os.environ.get("SATARK_DB", ROOT / "data" / "history.db"))
 HOST = os.environ.get("SATARK_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SATARK_PORT", "8000"))
 
+
+def env(key: str, default: str | None = None) -> str | None:
+    """A setting from the environment, else from the project's .env file (never committed)."""
+    if os.environ.get(key):
+        return os.environ[key]
+    try:
+        for line in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                if k.strip() == key and v.strip():
+                    return v.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return default
+
+
+# Automatic checking (phone app, inbox watcher, browser extension)
+LAN_MODE = HOST not in ("127.0.0.1", "localhost", "::1")   # server reachable from other devices
+LOOPBACK = {"127.0.0.1", "::1", "localhost"}
+SOURCES_AUTO = ["sms-app", "email-watch", "gmail-web"]
+
 # Input limits
 MAX_TEXT_CHARS = 20_000
 MAX_SENDER_CHARS = 320

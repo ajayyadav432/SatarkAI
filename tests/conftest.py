@@ -10,6 +10,8 @@ sys.path.insert(0, str(ROOT))
 # Must be set before app.config is imported.
 _TMP = tempfile.mkdtemp(prefix="satark-test-")
 os.environ["SATARK_DB"] = str(Path(_TMP) / "test.db")
+os.environ["SATARK_NO_MAILWATCH"] = "1"   # never start the real inbox watcher in tests
+os.environ["SATARK_TOKEN"] = "test-pairing-code"
 
 import pytest  # noqa: E402
 

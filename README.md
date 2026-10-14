@@ -27,7 +27,7 @@ Use the terminal inside VS Code (the Python environment was created there).
 
 ```bash
 ./run.sh            # start the app, then open http://localhost:8000
-./run.sh test       # run all 240 tests
+./run.sh test       # run all 252 tests
 ./run.sh seed       # add demo cases so the dashboard is not empty
 ./run.sh unseed     # remove the demo cases
 ./run.sh train      # download the datasets again and retrain the models (about 5 minutes)
@@ -125,6 +125,18 @@ what it misses.
   before a real deployment: `python scripts/check_brands.py`.
 - No login. Analyst accounts and roles are future work.
 
+## Automatic checking (no copy-paste)
+
+| Channel | How | Setup |
+|---|---|---|
+| SMS | Android app `android/` (SatarkAI SMS Guard) checks every incoming SMS and shows a notification | Build: `cd android && ./gradlew assembleDebug`. Phone and laptop on the same network; start the server with `SATARK_HOST=0.0.0.0 ./run.sh`; in the app enter `http://<laptop-ip>:8000` and the pairing code `SATARK_TOKEN` from `.env` |
+| Websites | The extension checks every page as it loads (warning bar) and marks risky links (badge) | Load or reload `extension/` in `chrome://extensions` |
+| Gmail in the browser | The extension shows a verdict bar above each opened e-mail | Same extension. Uses Gmail's page classes (`a3s`, `hP`, `gD`), which Gmail does not document |
+| Inbox watcher | The server checks every new e-mail over IMAP, read-only | `IMAP_USER` and `IMAP_PASSWORD` (a Gmail app password) in `.env` |
+
+Risky messages pop up as live alerts in the web app. With `SATARK_HOST=0.0.0.0`, other devices can only
+call `/api/ingest`, and only with the pairing code; everything else stays on the laptop.
+
 ## Browser extension (optional)
 
 `extension/` warns before a link on any web page opens.
@@ -151,7 +163,7 @@ app/
   static/            index.html, app.js, styles.css, go.html, go.js, Chart.js and Inter font (local copies)
 ml/                  download_data.py, train.py, sanity_legit_urls.txt
 models/              trained models and metrics.json
-tests/               240 tests: unit, API, security, models, acceptance R1-R9, browser
+tests/               252 tests: unit, API, security, models, acceptance R1-R9, browser
 extension/           browser extension
 scripts/             seed_demo.py, check_brands.py
 PLAN.md              the plan, design decisions and the findings log
