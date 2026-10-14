@@ -7,7 +7,8 @@
 (function () {
   "use strict";
   const COLORS = { Safe: "#16a34a", Low: "#6b7280", Medium: "#f5a524", High: "#f07a4a", Critical: "#dc3545" };
-  const done = new WeakSet();
+  let done = new WeakSet();
+  let enabled = true;   // the switch in the extension popup
   const css = (el, props) => { for (const [k, v] of Object.entries(props)) el.style.setProperty(k, v, "important"); return el; };
   const send = (msg) => new Promise((resolve) => {
     try { chrome.runtime.sendMessage(msg, (r) => resolve(chrome.runtime.lastError ? null : r)); }
@@ -58,12 +59,12 @@
   }
 
   async function check(body) {
-    if (done.has(body)) return;
+    if (!enabled || done.has(body)) return;
     done.add(body);
     const info = readMail(body);
     if (info.text.trim().length < 3) return;
     const answer = await send({ type: "ingestEmail", text: info.text, sender: info.sender, ref: info.ref });
-    if (answer && answer.ok && answer.result) bar(body, answer.result, answer.case_page);
+    if (enabled && answer && answer.ok && answer.result) bar(body, answer.result, answer.case_page);
   }
 
   let timer = null;
@@ -73,6 +74,12 @@
       if (b.offsetParent !== null && !(b.parentElement && b.parentElement.closest(".a3s"))) check(b);   // visible, outer body only
     }), 500);
   }
-  new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true });
-  scan();
+  new MutationObserver(() => { if (enabled) scan(); }).observe(document.documentElement, { childList: true, subtree: true });
+  chrome.storage.local.get({ enabled: true }, (v) => { enabled = v.enabled !== false; if (enabled) scan(); });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.enabled) return;
+    enabled = changes.enabled.newValue !== false;
+    if (enabled) { done = new WeakSet(); scan(); }
+    else document.querySelectorAll("[data-satark-bar]").forEach((b) => b.remove());
+  });
 })();

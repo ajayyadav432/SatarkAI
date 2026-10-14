@@ -3,6 +3,7 @@
 // 2. Links to other sites on the page are checked; risky ones get a small red badge.
 // 3. When you click a link to another site, it is checked first; risky links open the warning page.
 // If the SatarkAI app is not running, nothing is blocked and nothing is shown.
+// The switch in the extension popup turns all of this off and on (stored as "enabled").
 (function () {
   "use strict";
   const LOCAL = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -14,6 +15,15 @@
   /** Set several style properties (CSSOM, so page security policies do not block it). */
   const css = (el, props) => { for (const [k, v] of Object.entries(props)) el.style.setProperty(k, v, "important"); return el; };
   const isSatarkApp = LOCAL.has(location.hostname) && location.port === "8000";   // the SatarkAI app itself
+  const topFrame = window.top === window;
+
+  let enabled = true;
+  // What was found on this page; the popup asks for it.
+  const stats = { page: null, risky: [], checked: 0, appReachable: null };
+
+  function report() {
+    if (topFrame) send({ type: "stats", risky: enabled ? stats.risky.length : 0, enabled: enabled });
+  }
 
   // ---------- 3. click guard ----------
   function open(url, newTab) {
@@ -22,7 +32,7 @@
   }
 
   document.addEventListener("click", function (event) {
-    if (event.defaultPrevented || event.button !== 0) return;
+    if (!enabled || event.defaultPrevented || event.button !== 0) return;
     const link = event.target && event.target.closest ? event.target.closest("a[href]") : null;
     if (!link) return;
     let url;
@@ -45,8 +55,6 @@
       open(answer.warning_page, newTab);
     });
   }, true);
-
-  if (isSatarkApp || window.top !== window) return;   // no bar or badges on the SatarkAI app or inside frames
 
   // ---------- 1. warning bar for a risky page ----------
   function pageBar(r) {
@@ -73,7 +81,7 @@
   }
 
   // ---------- 2. badges on risky links ----------
-  const checked = new WeakSet();
+  let checked = new WeakSet();
 
   function badge(link, r) {
     if (link.nextSibling && link.nextSibling.dataset && link.nextSibling.dataset.satarkBadge !== undefined) return;
@@ -84,10 +92,25 @@
     css(b, { display: "inline-block", "margin-left": "4px", padding: "0 6px", "border-radius": "999px", background: COLORS[r.level] || COLORS.Critical,
       color: "#fff", font: "700 11px/18px system-ui, sans-serif", "vertical-align": "middle", "white-space": "nowrap", cursor: "help" });
     link.after(b);
+    link.dataset.satarkMarked = "";
     css(link, { outline: "2px solid " + (COLORS[r.level] || COLORS.Critical), "outline-offset": "1px", "border-radius": "2px" });
   }
 
+  /** Remove every badge, outline and bar (when protection is switched off, or before a rescan). */
+  function clearMarks() {
+    document.querySelectorAll("[data-satark-badge]").forEach((b) => b.remove());
+    document.querySelectorAll("[data-satark-marked]").forEach((a) => {
+      a.style.removeProperty("outline"); a.style.removeProperty("outline-offset"); a.style.removeProperty("border-radius");
+      delete a.dataset.satarkMarked;
+    });
+    const bar = document.getElementById("satark-page-bar");
+    if (bar) bar.remove();
+    checked = new WeakSet();
+    stats.page = null; stats.risky = []; stats.checked = 0;
+  }
+
   async function scanLinks() {
+    if (!enabled) return;
     const links = [];
     for (const a of document.querySelectorAll("a[href]")) {
       if (checked.has(a)) continue;
@@ -100,22 +123,67 @@
     }
     if (!links.length) return;
     const answer = await send({ type: "checkMany", urls: [...new Set(links.map((l) => l[1]))] });
-    if (!answer || !answer.ok) return;
+    stats.appReachable = !!(answer && answer.ok);
+    if (!answer || !answer.ok || !enabled) return;
+    stats.checked += links.length;
     for (const [a, href] of links) {
       const r = answer.results[href];
-      if (r && r.needs_warning) badge(a, r);
+      if (r && r.needs_warning) {
+        badge(a, r);
+        if (!stats.risky.some((x) => x.url === href)) stats.risky.push({ url: href, level: r.level, score: r.score, reason: r.reason });
+      }
     }
+    report();
   }
+
+  function checkPage() {
+    if (!enabled || !(location.protocol === "http:" || location.protocol === "https:") || LOCAL.has(location.hostname)) return;   // pages on this computer are not checked
+    send({ type: "check", url: location.href }).then((r) => {
+      stats.appReachable = !!(r && r.ok);
+      if (!r || !r.ok || !enabled) return;
+      stats.page = { level: r.level, score: r.score, reason: r.reason };
+      if (r.needs_warning) pageBar(r);
+      report();
+    });
+  }
+
+  // The popup asks what was found, or asks for a rescan.
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (!topFrame || !msg) return false;
+    if (msg.type === "getStats") {
+      sendResponse({ ...stats, enabled: enabled, url: location.href, local: LOCAL.has(location.hostname), satarkApp: isSatarkApp });
+      return false;
+    }
+    if (msg.type === "rescan" && !isSatarkApp) {
+      clearMarks();
+      checkPage();
+      scanLinks().then(() => sendResponse({ ok: true }));
+      return true;
+    }
+    return false;
+  });
+
+  if (isSatarkApp || !topFrame) return;   // no bar or badges on the SatarkAI app or inside frames
 
   let timer = null;
   const scheduleScan = () => { clearTimeout(timer); timer = setTimeout(scanLinks, 600); };
 
   function start() {
-    if ((location.protocol === "http:" || location.protocol === "https:") && !LOCAL.has(location.hostname)) {   // pages on this computer are not checked
-      send({ type: "check", url: location.href }).then((r) => { if (r && r.ok && r.needs_warning) pageBar(r); });
-    }
-    scanLinks();
-    new MutationObserver(scheduleScan).observe(document.documentElement, { childList: true, subtree: true });
+    chrome.storage.local.get({ enabled: true }, (v) => {
+      enabled = v.enabled !== false;
+      report();
+      if (!enabled) return;
+      checkPage();
+      scanLinks();
+    });
+    new MutationObserver(() => { if (enabled) scheduleScan(); }).observe(document.documentElement, { childList: true, subtree: true });
+    // React at once when the popup switch is used.
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes.enabled) return;
+      enabled = changes.enabled.newValue !== false;
+      if (enabled) { checkPage(); scanLinks(); } else { clearMarks(); }
+      report();
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });

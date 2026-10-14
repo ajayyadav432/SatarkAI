@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app import chat, config, db, ingest, mailwatch
+from app import chat, config, db, downloads, ingest, mailwatch
 from app.analysis import brands, models, rules
 from app.analysis.extract import normalise_url
 from app.analysis.pipeline import analyze, analyze_url
@@ -47,7 +47,9 @@ LAN_ALLOWED = {("POST", "/api/ingest"), ("GET", "/api/health")}
 async def security_headers(request: Request, call_next):
     client = request.client.host if request.client else ""
     if config.LAN_MODE and client not in config.LOOPBACK:
-        if (request.method, request.url.path) not in LAN_ALLOWED:
+        lan_ok = (request.method, request.url.path) in LAN_ALLOWED or (
+            request.method == "GET" and request.url.path.startswith("/download/"))   # the phone may fetch the app
+        if not lan_ok:
             return JSONResponse({"detail": "Only the SatarkAI phone app may connect from the network."}, status_code=403)
     response = await call_next(request)
     response.headers["Content-Security-Policy"] = CSP
@@ -194,6 +196,26 @@ def api_ingest(body: IngestIn, request: Request):
 def api_alerts(after: int = Query(default=0, ge=0)):
     """Risky messages that arrived automatically, newer than `after`. The web app polls this."""
     return ingest.alerts_after(after)
+
+
+@app.get("/api/downloads")
+def api_downloads():
+    """What the home page offers for download (the APK only when it has been built)."""
+    return {"apk": downloads.apk_info(), "extension": downloads.extension_info()}
+
+
+@app.get("/download/" + downloads.APK_NAME, include_in_schema=False)
+def download_apk():
+    p = downloads.apk_path()
+    if not p:
+        raise HTTPException(status_code=404, detail="The Android app has not been built yet: cd android && ./gradlew assembleDebug")
+    return FileResponse(p, media_type="application/vnd.android.package-archive", filename=downloads.APK_NAME)
+
+
+@app.get("/download/" + downloads.EXT_NAME, include_in_schema=False)
+def download_extension():
+    return Response(downloads.extension_zip(), media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{downloads.EXT_NAME}"'})
 
 
 @app.get("/api/auto-status")

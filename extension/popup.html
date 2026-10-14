@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SatarkAI Link Guard</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon48.png" alt="" width="36" height="36">
+    <div class="title"><b>SatarkAI Link Guard</b><small id="version"></small></div>
+  </header>
+
+  <label class="switch-row">
+    <span><b id="state-text">Protection on</b><small id="state-sub">Pages, links and Gmail are checked</small></span>
+    <input type="checkbox" id="enabled" role="switch" aria-label="Protection on or off">
+    <span class="switch" aria-hidden="true"></span>
+  </label>
+
+  <div class="status" id="app-status"><span class="dot"></span><span id="app-text">Checking the SatarkAI app…</span></div>
+
+  <section class="page" id="page">
+    <h2>This page</h2>
+    <div id="page-body" class="muted">Looking…</div>
+    <ul id="risky" class="risky"></ul>
+  </section>
+
+  <div class="buttons">
+    <button type="button" id="rescan">Rescan page</button>
+    <button type="button" id="open-app" class="primary">Open SatarkAI</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

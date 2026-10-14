@@ -444,6 +444,27 @@
     } catch (err) { host.hidden = true; }
   }
 
+  /** Fill in versions and sizes of the downloads; disable the app button if the APK is not built. */
+  async function loadDownloads() {
+    const mb = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB");
+    $("#copy-ext-url").addEventListener("click", () => {
+      navigator.clipboard.writeText("chrome://extensions").then(() => toast("Copied. Paste it into the address bar."), () => toast("Could not copy"));
+    });
+    let d;
+    try { d = await api("/api/downloads"); } catch (e) { return; }
+    const ext = d.extension;
+    $("#ext-meta").textContent = "Version " + ext.version + " · " + mb(ext.size) + " · Chrome and Edge";
+    const apk = d.apk, btn = $("#apk-btn");
+    if (apk.available) {
+      $("#apk-meta").textContent = "Version " + (apk.version || "?") + " · " + mb(apk.size) + " · Android 8 or newer";
+    } else {
+      btn.removeAttribute("href");
+      btn.setAttribute("aria-disabled", "true");
+      btn.textContent = "Not built yet";
+      $("#apk-meta").textContent = "Build it first: " + apk.build;
+    }
+  }
+
   function initAnalyze() {
     const form = $("#analyze-form"), text = $("#text"), counter = $("#char-count");
     const updateCount = () => { counter.textContent = fmtInt(text.value.length); };
@@ -458,6 +479,7 @@
       catch (e) { toast("The browser blocked clipboard access. Press Ctrl+V in the box instead."); text.focus(); }
     });
     loadHeroStats();
+    loadDownloads();
 
     async function run() {
       const body = {

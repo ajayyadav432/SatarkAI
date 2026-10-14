@@ -50,6 +50,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // A page reports how many risky links it found: shown as a number on the toolbar icon.
+  if (message.type === "stats" && sender.tab) {
+    const n = Number(message.risky) || 0;
+    const off = message.enabled === false;
+    chrome.action.setBadgeText({ tabId: sender.tab.id, text: off ? "OFF" : (n > 0 ? String(n) : "") });
+    chrome.action.setBadgeBackgroundColor({ tabId: sender.tab.id, color: off ? "#6b7280" : "#dc3545" });
+    return false;
+  }
+
   // An e-mail opened in Gmail.
   if (message.type === "ingestEmail" && typeof message.text === "string") {
     post("/api/ingest", {
@@ -62,4 +71,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   return false;
+});
+
+// Toolbar icon shows "OFF" while protection is switched off in the popup.
+function showOnOff(enabled) {
+  chrome.action.setBadgeText({ text: enabled ? "" : "OFF" });
+  chrome.action.setBadgeBackgroundColor({ color: enabled ? "#dc3545" : "#6b7280" });
+  chrome.action.setTitle({ title: "SatarkAI Link Guard: protection " + (enabled ? "on" : "off") });
+}
+chrome.storage.local.get({ enabled: true }, (v) => showOnOff(v.enabled !== false));
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.enabled) showOnOff(changes.enabled.newValue !== false);
 });
