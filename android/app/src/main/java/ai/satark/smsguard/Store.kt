@@ -27,6 +27,13 @@ class Store(context: Context) {
         prefs.edit().putString("recent", JSONArray(list.map { it.toJson() }).toString()).apply()
     }
 
+    /** Replace one stored item (same time, sender and text) with an updated one. */
+    @Synchronized
+    fun replace(old: Checked, new: Checked) {
+        val list = recent().map { if (it.time == old.time && it.sender == old.sender && it.text == old.text) new else it }
+        prefs.edit().putString("recent", JSONArray(list.map { it.toJson() }).toString()).apply()
+    }
+
     companion object {
         // 10.0.2.2 is the laptop as seen from the Android emulator. On a real phone use the laptop's Wi-Fi address.
         const val DEFAULT_SERVER = "http://10.0.2.2:8000"

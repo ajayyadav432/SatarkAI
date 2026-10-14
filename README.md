@@ -31,6 +31,7 @@ Use the terminal inside VS Code (the Python environment was created there).
 ./run.sh seed       # add demo cases so the dashboard is not empty
 ./run.sh unseed     # remove the demo cases
 ./run.sh demo       # demo web pages with fake scam links (fake social network) on http://127.0.0.1:8765
+./run.sh phone      # keep the Android phone connected over USB (run in a second terminal)
 ./run.sh train      # download the datasets again and retrain the models (about 5 minutes)
 ```
 

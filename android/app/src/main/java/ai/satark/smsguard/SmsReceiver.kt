@@ -37,6 +37,8 @@ class SmsReceiver : BroadcastReceiver() {
                     Notifier.show(context, item)
                     context.sendBroadcast(Intent(ACTION_UPDATED).setPackage(context.packageName))
                 }
+                // The laptop answered, so also send any SMS that could not be checked earlier.
+                if (store.recent().firstOrNull()?.level != null) Retry.unchecked(context)
             } finally {
                 pending.finish()
             }

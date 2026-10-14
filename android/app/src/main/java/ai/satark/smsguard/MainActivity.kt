@@ -129,7 +129,15 @@ fun HomeScreen() {
                 status = "Checking…"
                 Thread {
                     val ok = runCatching { SatarkClient.health(store.serverUrl) }.getOrDefault(false)
-                    (context as? ComponentActivity)?.runOnUiThread { status = if (ok) "✓ Connected" else "✗ Cannot reach the laptop" }
+                    val fixed = if (ok) Retry.unchecked(context) else 0
+                    (context as? ComponentActivity)?.runOnUiThread {
+                        recent = store.recent()
+                        status = when {
+                            !ok -> "✗ Cannot reach the laptop"
+                            fixed > 0 -> "✓ Connected · $fixed rechecked"
+                            else -> "✓ Connected"
+                        }
+                    }
                 }.start()
             }) { Text("Test connection") }
             Spacer(Modifier.width(12.dp))
@@ -154,6 +162,22 @@ fun HomeScreen() {
                 (context as? ComponentActivity)?.runOnUiThread { recent = store.recent(); status = if (item.level != null) "✓ Sample checked" else "✗ Cannot reach the laptop" }
             }.start()
         }, modifier = Modifier.fillMaxWidth()) { Text("Try a sample scam SMS") }
+
+        val unchecked = recent.count { it.level == null }
+        if (unchecked > 0) {
+            Button(onClick = {
+                status = "Rechecking…"
+                Thread {
+                    val fixed = Retry.unchecked(context)
+                    (context as? ComponentActivity)?.runOnUiThread {
+                        recent = store.recent()
+                        status = if (fixed > 0) "✓ $fixed rechecked" else "✗ Cannot reach the laptop"
+                    }
+                }.start()
+            }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF07A4A))) {
+                Text("Retry $unchecked unchecked message" + if (unchecked == 1) "" else "s")
+            }
+        }
 
         Text("Recently checked", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         if (recent.isEmpty()) {
