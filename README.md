@@ -9,6 +9,15 @@ a warning before any risky link opens, a searchable history and a security dashb
 
 It runs fully offline on one laptop. No API key, no paid service, no GPU.
 
+## Team
+
+| Name | GitHub |
+|---|---|
+| Ajay Yadav | [@ajayyadav432](https://github.com/ajayyadav432) |
+| Divyansh Shah | [@Divyanshshah01](https://github.com/Divyanshshah01) |
+| manasvi15-git | [@manasvi15-git](https://github.com/manasvi15-git) |
+| gauravpareek-web | [@gauravpareek-web](https://github.com/gauravpareek-web) |
+
 ## Run it
 
 Use the terminal inside VS Code (the Python environment was created there).
