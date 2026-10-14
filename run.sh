@@ -7,6 +7,7 @@
 #   ./run.sh unseed   remove the demo cases again
 #   ./run.sh demo     serve the demo web pages (fake social network) on port 8765
 #   ./run.sh phone    keep the phone connected over USB (re-applies adb reverse)
+#   ./run.sh wifi     start reachable from the phone over Wi-Fi / hotspot (prints the address)
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -29,6 +30,15 @@ case "${1:-serve}" in
     fi
     echo "SatarkAI is starting on http://${HOST}:${PORT}  (Ctrl+C to stop)"
     exec "$PY" -m uvicorn app.main:app --host "$HOST" --port "$PORT"
+    ;;
+  wifi)
+    # Same as serve, but reachable from the phone over Wi-Fi or a hotspot. Other devices may only send
+    # messages in (with the pairing code) and download the app; everything else stays on this laptop.
+    echo "SatarkAI in Wi-Fi mode. In the phone app use one of these addresses (same network as the phone):"
+    { [ -f /.flatpak-info ] && flatpak-spawn --host hostname -I || hostname -I; } 2>/dev/null | tr " " "\n" |
+      grep -E "^(10|172\.(1[6-9]|2[0-9]|3[01])|192\.168)\." | grep -v -E "^172\.(1[7-9]|2[0-2])\.0\.1$|^192\.168\.122\.1$|^10\.0\.3\.1$" |
+      sed "s|.*|   http://&:${PORT}|"
+    exec "$PY" -m uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
     ;;
   test)
     shift
@@ -64,7 +74,7 @@ case "${1:-serve}" in
     exec "$PY" scripts/seed_demo.py --remove
     ;;
   *)
-    echo "Usage: ./run.sh [serve|test|train|seed|unseed|demo|phone]"
+    echo "Usage: ./run.sh [serve|wifi|test|train|seed|unseed|demo|phone]"
     exit 2
     ;;
 esac

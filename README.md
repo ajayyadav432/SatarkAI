@@ -32,6 +32,7 @@ Use the terminal inside VS Code (the Python environment was created there).
 ./run.sh unseed     # remove the demo cases
 ./run.sh demo       # demo web pages with fake scam links (fake social network) on http://127.0.0.1:8765
 ./run.sh phone      # keep the Android phone connected over USB (run in a second terminal)
+./run.sh wifi       # start so the phone can connect over Wi-Fi / hotspot (prints the address for the app)
 ./run.sh train      # download the datasets again and retrain the models (about 5 minutes)
 ```
 
