@@ -944,3 +944,6 @@ table.data.senders tr.repeat td:first-child { box-shadow: inset 3px 0 0 var(--lv
 .post-scan.lvl-border-Medium { border-color: var(--lvl-medium); }
 .post-scan.lvl-border-High { border-color: var(--lvl-high); }
 .post-scan.lvl-border-Critical { border-color: var(--lvl-critical); }
+.quick-login { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.or-line { display: flex; align-items: center; gap: 10px; margin: 0; }
+.or-line::before, .or-line::after { content: ""; flex: 1; border-top: 1px solid var(--hairline); }

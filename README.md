@@ -27,9 +27,9 @@ Use the terminal inside VS Code (the Python environment was created there).
 
 ```bash
 ./run.sh            # start the app, then open http://localhost:8000
-./run.sh test       # run all 342 tests
-./run.sh seed       # add demo cases so the dashboard is not empty
-./run.sh unseed     # remove the demo cases
+./run.sh test       # run all 348 tests
+./run.sh seed       # add demo cases (dashboard) and demo posts (Feed)
+./run.sh unseed     # remove the demo cases and demo posts
 ./run.sh demo       # demo web pages with fake scam links (fake social network) on http://127.0.0.1:8765
 ./run.sh phone      # keep the Android phone connected over USB (run in a second terminal)
 ./run.sh wifi       # start so the phone can connect over Wi-Fi / hotspot (prints the address for the app)
@@ -159,8 +159,12 @@ Risky messages pop up as live alerts in the web app (admin panel). The phone app
   accounts registered from other devices are always users, so nobody on the Wi-Fi can make themselves admin.
   An admin can make other users admin. Admins switch between the **user panel** and the **admin panel** in the
   profile menu.
+- **One click:** *Continue as Guest* logs in to a shared demo user from any device. *Continue as Admin* logs in
+  to the admin account and appears only on the laptop itself (`localhost`). Their passwords are random, so these
+  two accounts can only be used through the buttons; the names `guest` and `admin` cannot be registered.
 - **Who can do what:** everyone can use Analyze and read the Feed. Posting, voting, commenting and PDF reports
-  need an account. History, Dashboard, live alerts and the Admin tab are only in the admin panel.
+  need an account. On the laptop itself History and Dashboard are open without login, as before; from other
+  devices they need an admin. The Admin tab (users, hidden posts) is only in the admin panel.
 - **Feed:** posts with a title, a story, an optional scam message (SatarkAI analyses it on the server and attaches
   the score) and an optional screenshot. Up / down votes, comments, sort by New or Top, *Report on
   cybercrime.gov.in* (copies the complaint text) and *Call 1930* on every post. *Share to Feed* on an Analyze result
@@ -202,7 +206,7 @@ app/
   static/            index.html, app.js, styles.css, go.html, go.js, Chart.js and Inter font (local copies)
 ml/                  download_data.py, train.py, sanity_legit_urls.txt
 models/              trained models and metrics.json
-tests/               342 tests: unit, API, security, accounts, feed, models, acceptance R1-R9, browser
+tests/               348 tests: unit, API, security, accounts, feed, models, acceptance R1-R9, browser
 extension/           browser extension
 scripts/             seed_demo.py, check_brands.py
 PLAN.md              the plan, design decisions and the findings log

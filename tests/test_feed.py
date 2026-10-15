@@ -266,3 +266,68 @@ def test_pdf_links_are_not_clickable(client):
     pid = post(client).json()["id"]
     pdf = client.get(f"/api/feed/{pid}/report.pdf").content
     assert b"/URI" not in pdf and b"/Annot" not in pdf
+
+
+def test_history_and_dashboard_open_on_the_laptop_without_login(fresh_db):
+    """Same as before accounts existed: on the laptop itself no login is needed; Admin still needs one."""
+    with TestClient(app, client=("127.0.0.1", 50000)) as local:
+        assert local.get("/api/auth/me").json() == {"user": None, "local": True}
+        for path in ("/api/cases", "/api/stats", "/api/alerts", "/api/cases/export.csv"):
+            assert local.get(path).status_code == 200, path
+        case_id = local.post("/api/analyze", json={"text": SCAM_KYC}).json()["case_id"]
+        assert local.get(f"/api/cases/{case_id}/report.pdf").status_code == 200
+        assert local.get("/api/admin/users").status_code == 401
+    with TestClient(app) as remote:                       # another device on the Wi-Fi
+        assert remote.get("/api/auth/me").json()["local"] is False
+        assert remote.get("/api/cases").status_code == 401
+
+
+def test_one_click_guest_and_admin(fresh_db):
+    """Guest works from any device; one-click admin only on the laptop and reuses the existing admin."""
+    with TestClient(app) as remote:
+        g = remote.post("/api/auth/quick", json={"who": "guest"})
+        assert g.status_code == 200 and g.json()["user"] == {**g.json()["user"], "username": "guest", "role": "user"}
+        assert post(remote, scan_text="").status_code == 200          # the guest can post
+        r = remote.post("/api/auth/quick", json={"who": "admin"})
+        assert r.status_code == 403 and "laptop" in r.json()["detail"]
+        assert remote.get("/api/auth/me").json()["user"]["username"] == "guest"
+        # The reserved names cannot be taken by registering.
+        for name in ("guest", "Admin"):
+            x = remote.post("/api/auth/register", json={"username": name, "password": "password-123"})
+            assert x.status_code == 400 and "reserved" in x.json()["detail"]
+    with TestClient(app, client=("127.0.0.1", 50001)) as local:
+        a = local.post("/api/auth/quick", json={"who": "admin"}).json()["user"]
+        assert a["username"] == "admin" and a["role"] == "admin"
+        assert local.get("/api/admin/users").status_code == 200
+        assert local.post("/api/auth/quick", json={"who": "guest"}).json()["user"]["id"] == g.json()["user"]["id"]
+
+
+def test_one_click_admin_uses_the_registered_admin(fresh_db):
+    accounts.register("ajay", "password-123", local=True)
+    with TestClient(app, client=("127.0.0.1", 50002)) as local:
+        assert local.post("/api/auth/quick", json={"who": "admin"}).json()["user"]["username"] == "ajay"
+
+
+def test_blocked_guest_cannot_use_the_button(client, anon):
+    gid = anon.post("/api/auth/quick", json={"who": "guest"}).json()["user"]["id"]
+    client.patch(f"/api/admin/users/{gid}", json={"blocked": True})
+    r = anon.post("/api/auth/quick", json={"who": "guest"})
+    assert r.status_code == 400 and "blocked" in r.json()["detail"]
+
+
+def test_demo_feed_posts_can_be_added_and_removed(client):
+    """./run.sh seed adds demo posts from demo_ accounts; ./run.sh unseed removes them and nothing else."""
+    from scripts import seed_demo
+    real = post(client, title="A real post", scan_text="").json()["id"]
+    seed_demo.seed_feed()
+    feed = client.get("/api/feed").json()
+    assert feed["total"] == len(seed_demo.POSTS) + 1
+    assert feed["posts"][0]["pinned"] and feed["posts"][0]["author"].startswith("demo_")
+    assert any(p["scan"] and p["scan"]["level"] == "Critical" for p in feed["posts"])
+    assert sum(p["comment_count"] for p in feed["posts"]) >= 5 and max(p["score"] for p in feed["posts"]) >= 1
+    seed_demo.seed_feed()                                   # running it twice does not double the posts
+    assert client.get("/api/feed").json()["total"] == len(seed_demo.POSTS) + 1
+    seed_demo.remove_feed()
+    assert [p["id"] for p in client.get("/api/feed").json()["posts"]] == [real]
+    r = client.post("/api/auth/register", json={"username": "demo_me", "password": "password-123"})
+    assert r.status_code == 400 and "demo_" in r.json()["detail"]

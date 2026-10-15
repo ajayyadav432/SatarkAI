@@ -54,11 +54,16 @@ def _public(row) -> dict:
             "blocked": bool(row["blocked"]), "created_at": row["created_at"]}
 
 
-def register(username: str, password: str, local: bool) -> dict:
-    """Create an account. local: the request came from this laptop (only then can it become admin)."""
+def register(username: str, password: str, local: bool, reserve: bool = True) -> dict:
+    """Create an account. local: the request came from this laptop (only then can it become admin).
+    reserve: refuse the names of the one-click accounts (tests make an 'admin' directly)."""
     username = (username or "").strip()
     if not USERNAME_RE.match(username):
         raise AuthError("Username: 3-30 letters, digits, dot, dash or underscore.")
+    if reserve and username.lower() in RESERVED:
+        raise AuthError(f"'{username}' is reserved for the one-click buttons. Choose another name.")
+    if reserve and username.lower().startswith("demo_"):
+        raise AuthError("Names starting with demo_ are reserved for demo posts. Choose another name.")
     if len(password or "") < config.PASSWORD_MIN:
         raise AuthError(f"Password: at least {config.PASSWORD_MIN} characters.")
     if len(password) > 200:
@@ -71,6 +76,35 @@ def register(username: str, password: str, local: bool) -> dict:
         cur = con.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
                           (username, hash_password(password), role, db.now_iso()))
         row = con.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
+    return _public(row)
+
+
+GUEST_NAME = "guest"
+ADMIN_NAME = "admin"
+RESERVED = {GUEST_NAME, ADMIN_NAME}   # cannot be registered: used by the one-click buttons
+
+
+def quick_account(who: str, local: bool) -> dict:
+    """One-click login. "guest": a shared demo user, from any device. "admin": the first admin
+    account, only on the laptop itself. Accounts that do not exist yet are created; their password
+    is random and never shown, so these accounts can only be used through the buttons."""
+    with db.connect() as con:
+        if who == "admin":
+            if not local:
+                raise PermissionError("One-click admin works only on the laptop itself.")
+            row = con.execute("SELECT * FROM users WHERE role = 'admin' AND blocked = 0 ORDER BY id LIMIT 1").fetchone()
+            name, role = ADMIN_NAME, "admin"
+        else:
+            row = con.execute("SELECT * FROM users WHERE username = ?", (GUEST_NAME,)).fetchone()
+            name, role = GUEST_NAME, "user"
+        if row is None:
+            if con.execute("SELECT 1 FROM users WHERE username = ?", (name,)).fetchone():
+                raise AuthError(f"The account '{name}' is blocked or not an admin.")
+            cur = con.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
+                              (name, hash_password(secrets.token_urlsafe(24)), role, db.now_iso()))
+            row = con.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
+    if row["blocked"]:
+        raise AuthError("This account is blocked by an admin.")
     return _public(row)
 
 
@@ -150,6 +184,19 @@ def require_admin(request: Request) -> dict:
     if user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Only an admin can do this.")
     return user
+
+
+def is_local(request: Request) -> bool:
+    """The request comes from this laptop itself (http://localhost:8000)."""
+    return (request.client.host if request.client else "") in config.LOOPBACK
+
+
+def require_local_or_admin(request: Request) -> dict | None:
+    """History, Dashboard and live alerts: open on the laptop itself, as before accounts existed;
+    from another device only for an admin, because History holds everyone's messages."""
+    if is_local(request):
+        return current_user(request)
+    return require_admin(request)
 
 
 # --- admin: user management --------------------------------------------------

@@ -52,7 +52,7 @@ def client(fresh_db):
 
     from app import accounts
     from app.main import app
-    accounts.register(*ADMIN, local=True)
+    accounts.register(*ADMIN, local=True, reserve=False)
     with TestClient(app) as c:
         assert c.post("/api/auth/login", json={"username": ADMIN[0], "password": ADMIN[1]}).status_code == 200
         yield c

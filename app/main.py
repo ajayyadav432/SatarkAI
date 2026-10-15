@@ -40,7 +40,8 @@ CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' 
 
 # Who may do what is decided per route: Analyze, the Feed (reading), log in / register and the downloads
 # are open; posting, voting, comments and PDF reports need an account (accounts.require_user); History,
-# Dashboard, live alerts and user management need an admin (accounts.require_admin). The phone app sends
+# Dashboard and live alerts are open on the laptop itself and need an admin from other devices
+# (accounts.require_local_or_admin); user management needs an admin (accounts.require_admin). The phone app sends
 # messages to /api/ingest with the pairing code.
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
@@ -246,7 +247,7 @@ def api_ingest(body: IngestIn, request: Request):
 
 
 @app.get("/api/alerts")
-def api_alerts(after: int = Query(default=0, ge=0), admin: dict = Depends(accounts.require_admin)):
+def api_alerts(after: int = Query(default=0, ge=0), viewer: dict | None = Depends(accounts.require_local_or_admin)):
     """Risky messages that arrived automatically, newer than `after`. The web app polls this."""
     return ingest.alerts_after(after)
 
@@ -272,7 +273,7 @@ def download_extension():
 
 
 @app.get("/api/auto-status")
-def api_auto_status(admin: dict = Depends(accounts.require_admin)):
+def api_auto_status(viewer: dict | None = Depends(accounts.require_local_or_admin)):
     return {"lan_mode": config.LAN_MODE, "pairing_code_set": bool(ingest.token()),
             "mail_watcher": {k: mailwatch.status[k] for k in ("enabled", "running", "user", "last_check", "checked", "error")}}
 
@@ -327,7 +328,7 @@ def api_cases(
     sort: Literal["newest", "oldest", "score_desc", "score_asc"] = "newest",
     page: int = Query(default=1, ge=1, le=100000),
     page_size: int = Query(default=20, ge=1, le=100),
-    admin: dict = Depends(accounts.require_admin),
+    viewer: dict | None = Depends(accounts.require_local_or_admin),
 ):
     data = db.list_cases(page=page, page_size=page_size, sort=sort,
                          **_case_filters(q, level, category, status, channel, source, date_from, date_to, min_score, sender_key))
@@ -353,7 +354,7 @@ def api_export(
     date_from: str | None = Query(default=None, pattern=DATE),
     date_to: str | None = Query(default=None, pattern=DATE),
     min_score: int | None = Query(default=None, ge=0, le=100),
-    admin: dict = Depends(accounts.require_admin),
+    viewer: dict | None = Depends(accounts.require_local_or_admin),
 ):
     rows = db.export_rows(**_case_filters(q, level, category, status, channel, source, date_from, date_to, min_score, sender_key))
     columns = ["id", "created_at", "channel", "sender", "score", "level", "category", "brands",
@@ -370,7 +371,7 @@ def api_export(
 
 
 @app.get("/api/cases/{case_id}")
-def api_case(case_id: int, admin: dict = Depends(accounts.require_admin)):
+def api_case(case_id: int, viewer: dict | None = Depends(accounts.require_local_or_admin)):
     case = db.get_case(case_id)
     if case is None:
         raise HTTPException(status_code=404, detail="Case not found")
@@ -378,14 +379,14 @@ def api_case(case_id: int, admin: dict = Depends(accounts.require_admin)):
 
 
 @app.patch("/api/cases/{case_id}")
-def api_case_update(case_id: int, body: CaseUpdate, admin: dict = Depends(accounts.require_admin)):
+def api_case_update(case_id: int, body: CaseUpdate, viewer: dict | None = Depends(accounts.require_local_or_admin)):
     if not db.update_case(case_id, status=body.status, notes=body.notes):
         raise HTTPException(status_code=404, detail="Case not found")
     return db.get_case(case_id)
 
 
 @app.delete("/api/cases/{case_id}")
-def api_case_delete(case_id: int, admin: dict = Depends(accounts.require_admin)):
+def api_case_delete(case_id: int, viewer: dict | None = Depends(accounts.require_local_or_admin)):
     if not db.delete_case(case_id):
         raise HTTPException(status_code=404, detail="Case not found")
     return {"deleted": case_id}
@@ -399,7 +400,7 @@ def api_stats(
     category: str | None = Query(default=None, max_length=80),
     source: str | None = Query(default=None, max_length=20),
     sender: str | None = Query(default=None, max_length=100),
-    admin: dict = Depends(accounts.require_admin),
+    viewer: dict | None = Depends(accounts.require_local_or_admin),
 ):
     """Dashboard numbers. kind, level, category, source and sender filter the risky sections
     (Repeat senders, Risky SMS & e-mail); the other charts always show everything."""
@@ -456,7 +457,7 @@ def _rows_from_upload(name: str, raw: bytes) -> list[dict]:
 
 
 @app.post("/api/bulk")
-async def api_bulk(file: UploadFile = File(...), admin: dict = Depends(accounts.require_admin)):
+async def api_bulk(file: UploadFile = File(...), viewer: dict | None = Depends(accounts.require_local_or_admin)):
     """Analyse many messages at once: a .csv with a 'text' column, or a .txt with one message per line."""
     raw = await file.read(config.MAX_BULK_BYTES + 1)
     if len(raw) > config.MAX_BULK_BYTES:
@@ -511,6 +512,24 @@ def api_login(body: AuthIn, request: Request):
     return _start_session(user)
 
 
+class QuickIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    who: Literal["guest", "admin"]
+
+
+@app.post("/api/auth/quick")
+def api_quick_login(body: QuickIn, request: Request):
+    """One-click login as the shared guest, or (on the laptop only) as the admin."""
+    try:
+        user = accounts.quick_account(body.who, local=accounts.is_local(request))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from None
+    except accounts.AuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    return _start_session(user)
+
+
 @app.post("/api/auth/logout")
 def api_logout(request: Request):
     accounts.end_session(request.cookies.get(config.SESSION_COOKIE))
@@ -520,8 +539,9 @@ def api_logout(request: Request):
 
 
 @app.get("/api/auth/me")
-def api_me(user: dict | None = Depends(accounts.current_user)):
-    return {"user": user}
+def api_me(request: Request, user: dict | None = Depends(accounts.current_user)):
+    """local: the page is open on the laptop itself, where History and Dashboard need no login."""
+    return {"user": user, "local": accounts.is_local(request)}
 
 
 # --- community feed -------------------------------------------------------------
@@ -640,7 +660,7 @@ def api_post_report(post_id: int, user: dict = Depends(accounts.require_user)):
 
 
 @app.get("/api/cases/{case_id}/report.pdf")
-def api_case_report(case_id: int, admin: dict = Depends(accounts.require_admin)):
+def api_case_report(case_id: int, viewer: dict | None = Depends(accounts.require_local_or_admin)):
     case = db.get_case(case_id)
     if case is None:
         raise HTTPException(status_code=404, detail="Case not found")

@@ -1424,7 +1424,7 @@
   }
 
   async function pollAlerts() {
-    if (!adminPanel()) { alertSeq = null; setTimeout(pollAlerts, 3000); return; }
+    if (!historyAllowed()) { alertSeq = null; setTimeout(pollAlerts, 3000); return; }
     try {
       const r = await api("/api/alerts?after=" + (alertSeq || 0));
       if (alertSeq !== null) r.alerts.forEach(showAlert);   // the first poll only learns where the feed is
@@ -1437,12 +1437,16 @@
   // ---------- accounts, profile menu, user / admin panel ----------
 
   let ME = null;                 // {id, username, role} or null
+  let LOCAL = false;             // page opened on the laptop itself: History and Dashboard need no login
   let panel = "user";            // "user" or "admin"; only admins can switch to "admin"
   const ADMIN_VIEWS = new Set(["history", "dashboard", "admin"]);
   const adminPanel = () => Boolean(ME && ME.role === "admin" && panel === "admin");
+  /** History and Dashboard: always on the laptop itself, from other devices only in the admin panel. */
+  const historyAllowed = () => LOCAL || adminPanel();
+  const viewAllowed = (v) => !ADMIN_VIEWS.has(v) || (v === "admin" ? adminPanel() : historyAllowed());
 
   async function loadMe() {
-    try { ME = (await api("/api/auth/me")).user; } catch (e) { ME = null; }
+    try { const r = await api("/api/auth/me"); ME = r.user; LOCAL = Boolean(r.local); } catch (e) { ME = null; }
     let saved = null;
     try { saved = localStorage.getItem("satark-panel"); } catch (e) { /* ignore */ }
     panel = ME && ME.role === "admin" && saved !== "user" ? "admin" : "user";
@@ -1463,9 +1467,11 @@
     $("#profile-name").textContent = ME ? ME.username : "Log in";
     $("#profile-role").textContent = !ME ? "Guest" : ME.role === "admin" ? (adminPanel() ? "Admin panel" : "Admin · user panel") : "User";
     for (const a of $$(".tabs .admin-only")) a.hidden = !adminPanel();
+    for (const a of $$(".tabs .history-tab")) a.hidden = !historyAllowed();
+    $("#quick-admin").hidden = !LOCAL;   // one-click admin only on the laptop itself
     document.body.classList.toggle("is-admin-panel", adminPanel());
     const saveOpt = $("#opt-save");
-    if (saveOpt) saveOpt.closest("label").hidden = !adminPanel();   // History belongs to the admin panel
+    if (saveOpt) saveOpt.closest("label").hidden = !historyAllowed();
     renderProfileMenu();
   }
 
@@ -1474,7 +1480,10 @@
     const close = () => { menu.hidden = true; $("#profile-btn").setAttribute("aria-expanded", "false"); };
     if (!ME) {
       menu.replaceChildren(
-        h("p", { class: "small muted", text: "Log in to post in the Feed, vote, comment and download PDF reports." }),
+        h("p", { class: "small muted", text: "One click to start, or log in with your own account to post, vote, comment and download PDFs." }),
+        h("div", { class: "menu-actions" },
+          h("button", { type: "button", class: "btn small", onclick: () => { close(); quickLogin("guest"); } }, "👤 Guest"),
+          LOCAL ? h("button", { type: "button", class: "btn small primary", onclick: () => { close(); quickLogin("admin"); } }, "🛡️ Admin") : null),
         h("div", { class: "menu-actions" },
           h("button", { type: "button", class: "btn primary small", onclick: () => { close(); openAuth("login"); } }, "Log in"),
           h("button", { type: "button", class: "btn small", onclick: () => { close(); openAuth("register"); } }, "Register")));
@@ -1520,17 +1529,35 @@
       try {
         const r = await api("/api/auth/" + mode, { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username: $("#auth-user").value.trim(), password: $("#auth-pass").value }) });
-        ME = r.user;
-        panel = ME.role === "admin" ? "admin" : "user";
-        try { localStorage.setItem("satark-panel", panel); } catch (e) { /* ignore */ }
-        dlg.close();
         $("#auth-pass").value = "";
-        applyAuth();
-        toast((mode === "register" ? "Welcome, " : "Logged in as ") + ME.username + (ME.role === "admin" ? " (admin)" : ""));
-        if (pendingAfterLogin) { const f = pendingAfterLogin; pendingAfterLogin = null; f(); }
-        route();
+        loggedIn(r.user, mode === "register" ? "Welcome, " : "Logged in as ");
       } catch (e2) { err.textContent = e2.message; err.hidden = false; }
     });
+    $("#quick-guest").addEventListener("click", () => quickLogin("guest"));
+    $("#quick-admin").addEventListener("click", () => quickLogin("admin"));
+  }
+
+  function loggedIn(user, greeting) {
+    ME = user;
+    panel = ME.role === "admin" ? "admin" : "user";
+    try { localStorage.setItem("satark-panel", panel); } catch (e) { /* ignore */ }
+    const dlg = $("#auth-dialog");
+    if (dlg.open) dlg.close();
+    applyAuth();
+    toast(greeting + ME.username + (ME.role === "admin" ? " (admin)" : ""));
+    if (pendingAfterLogin) { const f = pendingAfterLogin; pendingAfterLogin = null; f(); }
+    route();
+  }
+
+  /** One click: the shared guest account, or (on the laptop only) the admin. */
+  async function quickLogin(who) {
+    try {
+      const r = await api("/api/auth/quick", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ who: who }) });
+      loggedIn(r.user, "Logged in as ");
+    } catch (err) {
+      const box = $("#auth-error");
+      if ($("#auth-dialog").open) { box.textContent = err.message; box.hidden = false; } else toast(err.message);
+    }
   }
 
   let pendingAfterLogin = null;
@@ -1780,6 +1807,7 @@
           p.pinned ? h("span", { class: "pin-badge", text: "📌 Pinned" }) : null,
           p.verified ? h("span", { class: "verified-badge", text: "✔ Verified scam" }) : null,
           p.hidden ? h("span", { class: "pill", text: "Hidden" }) : null,
+          p.author.startsWith("demo_") ? h("span", { class: "pill demo", title: "Example post added by ./run.sh seed", text: "Demo" }) : null,
           h("span", {}, "Posted by ", h("b", { text: p.author }), " · " + fmtTime(p.created_at))),
         h("h3", { class: "post-title", text: p.title }),
         p.body ? h("p", { class: "post-body", text: p.body }) : null,
@@ -1846,8 +1874,8 @@
     const raw = (location.hash || "#analyze").slice(1);
     const caseMatch = /^case\/(\d+)$/.exec(raw);
     let view = caseMatch ? "history" : (VIEWS.includes(raw) ? raw : "analyze");
-    if (ADMIN_VIEWS.has(view) && !adminPanel()) {
-      // History, Dashboard and Admin belong to the admin panel.
+    if (!viewAllowed(view)) {
+      // From other devices, History, Dashboard and Admin belong to the admin panel.
       if (!ME) openAuth("login", "History, Dashboard and Admin are for admins. Log in with an admin account.");
       else if (ME.role === "admin") toast("Switch to the admin panel (profile menu, top left) to open this page.");
       else toast("Only admins can open this page.");

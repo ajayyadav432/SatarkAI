@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SatarkAI - Phishing, scam and malicious URL detection</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/static/styles.css?v=1.8">
-  <script src="/static/theme.js?v=1.8"></script>
+  <link rel="stylesheet" href="/static/styles.css?v=2.1">
+  <script src="/static/theme.js?v=2.1"></script>
 </head>
 <body>
   <header class="topbar">
@@ -27,8 +27,8 @@
     <nav class="tabs" aria-label="Sections">
       <a href="#analyze" data-view="analyze">Analyze</a>
       <a href="#feed" data-view="feed">Feed</a>
-      <a href="#history" data-view="history" class="admin-only" hidden>History</a>
-      <a href="#dashboard" data-view="dashboard" class="admin-only" hidden>Dashboard</a>
+      <a href="#history" data-view="history" class="history-tab" hidden>History</a>
+      <a href="#dashboard" data-view="dashboard" class="history-tab" hidden>Dashboard</a>
       <a href="#admin" data-view="admin" class="admin-only" hidden>Admin</a>
       <a href="#about" data-view="about">How it works</a>
     </nav>
@@ -304,6 +304,11 @@
       <button type="button" class="icon-btn" id="auth-close" aria-label="Close">&#x2715;</button>
     </div>
     <form id="auth-form" class="dialog-body" autocomplete="on">
+      <div class="quick-login" id="quick-login">
+        <button type="button" class="btn" id="quick-guest">&#x1F464; Continue as Guest</button>
+        <button type="button" class="btn primary" id="quick-admin" hidden>&#x1F6E1;&#xFE0F; Continue as Admin</button>
+      </div>
+      <p class="or-line small muted"><span>or with your own account</span></p>
       <div class="segmented compact" role="group" aria-label="Log in or register">
         <label><input type="radio" name="auth-mode" value="login" checked><span>Log in</span></label>
         <label><input type="radio" name="auth-mode" value="register"><span>Register</span></label>
@@ -344,7 +349,7 @@
     <span id="foot-text">SatarkAI</span> &middot; analysis runs fully offline &middot; IEEE-IGNITE Hackathon 2026, SKIT025
   </footer>
 
-  <script src="/static/vendor/chart.umd.min.js?v=1.8"></script>
-  <script src="/static/app.js?v=1.8"></script>
+  <script src="/static/vendor/chart.umd.min.js?v=2.1"></script>
+  <script src="/static/app.js?v=2.1"></script>
 </body>
 </html>

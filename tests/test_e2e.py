@@ -269,15 +269,19 @@ def test_dark_theme_toggle_is_remembered(page, server):
     assert page.evaluate("document.documentElement.dataset.theme") == "dark"
 
 
-def test_guest_sees_no_admin_pages_and_must_log_in_to_post(guest, server):
+def test_guest_on_the_laptop_sees_history_but_not_admin(guest, server):
+    """On the laptop itself History and Dashboard need no login (as before accounts); Admin does."""
     guest.goto(server + "/#feed")
     guest.wait_for_selector(".composer-guest")
-    assert guest.locator(".tabs a[data-view=history]").is_hidden()
     assert guest.inner_text("#profile-name") == "Log in"
+    assert guest.locator(".tabs a[data-view=history]").is_visible()
+    assert guest.locator(".tabs a[data-view=dashboard]").is_visible()
+    assert guest.locator(".tabs a[data-view=admin]").is_hidden()
     guest.goto(server + "/#history")
+    guest.wait_for_selector("#history-table tbody tr")
+    guest.goto(server + "/#admin")
     guest.wait_for_selector("#auth-dialog[open]")
-    assert "admins" in guest.inner_text("#auth-why")
-    assert not guest.locator("#view-history").is_visible()
+    assert not guest.locator("#view-admin").is_visible()
 
 
 def test_register_post_vote_comment_and_report(guest, server):
@@ -331,7 +335,8 @@ def test_admin_panel_switch_and_moderation(page, server):
     page.wait_for_selector("#feed-list .post.pinned")
     page.click("#profile-btn")
     page.check("#profile-menu input[name=panel][value=user]")
-    wait_until(page, "!document.querySelector('.tabs a[data-view=history]').offsetParent")
+    wait_until(page, "!document.querySelector('.tabs a[data-view=admin]').offsetParent")
+    assert page.locator(".tabs a[data-view=history]").is_visible()     # on the laptop History stays
     assert page.locator("#feed-list .post .mod-bar").count() == 0
     page.click("#profile-btn")
     page.check("#profile-menu input[name=panel][value=admin]")
@@ -339,3 +344,21 @@ def test_admin_panel_switch_and_moderation(page, server):
     page.wait_for_selector("#users-table tbody tr")
     assert "neha_k" in page.inner_text("#users-table") or page.locator("#users-table tbody tr").count() >= 1
     assert page.problems == []
+
+
+def test_one_click_guest_and_admin_buttons(guest, server):
+    guest.goto(server + "/")
+    guest.click("#profile-btn")
+    guest.click("#profile-menu >> text=Guest")
+    wait_until(guest, "document.querySelector('#profile-name').textContent === 'guest'")
+    assert guest.locator(".tabs a[data-view=admin]").is_hidden()
+    guest.click("#profile-btn")
+    guest.click("#profile-menu >> text=Log out")
+    wait_until(guest, "document.querySelector('#profile-name').textContent === 'Log in'")
+    guest.click("#profile-btn")
+    guest.click("#profile-menu button:text-is('Log in')")
+    guest.wait_for_selector("#auth-dialog[open] #quick-admin")
+    guest.click("#quick-admin")                         # on the laptop: the existing admin
+    wait_until(guest, "document.querySelector('#profile-name').textContent === 'e2e-admin'")
+    assert guest.locator(".tabs a[data-view=admin]").is_visible()
+    assert guest.problems == []
