@@ -526,6 +526,13 @@ table.data th {
 }
 table.data td { padding: 10px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
 table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data th.sortable button {
+  font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; background: none; border: 0;
+  padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+}
+table.data th.sortable button:hover, table.data th.sorted { color: var(--ink); }
+table.data th .sort-arrow { font-size: 0.75rem; opacity: 0.5; }
+table.data th.sorted .sort-arrow { opacity: 1; }
 table.data tbody tr { transition: background 0.12s; }
 table.data tbody tr.clickable { cursor: pointer; }
 table.data tbody tr.clickable:hover { background: var(--surface-2); }

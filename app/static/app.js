@@ -871,12 +871,33 @@
     return chartCard("Risky SMS & e-mail", sub, body);
   }
 
+  /** Column the Repeat senders table is sorted by; first click sorts newest/highest first, the next click flips it. */
+  const sendersSort = { key: null, dir: "desc" };
+
   function repeatSendersCard(s) {
-    const list = s.repeat_senders;
+    const list = s.repeat_senders.slice();
+    if (sendersSort.key) {
+      const k = sendersSort.key, sign = sendersSort.dir === "desc" ? -1 : 1;
+      list.sort((a, b) => (a[k] < b[k] ? -1 : a[k] > b[k] ? 1 : 0) * sign);
+    }
+    const sortTh = (key, label, cls) => {
+      const on = sendersSort.key === key;
+      const sortBy = () => {
+        sendersSort.dir = on && sendersSort.dir === "desc" ? "asc" : "desc";
+        sendersSort.key = key;
+        const next = repeatSendersCard(s);
+        next.style.animation = "none";
+        card.replaceWith(next);
+      };
+      return h("th", { class: "sortable" + (cls ? " " + cls : "") + (on ? " sorted" : ""),
+        "aria-sort": on ? (sendersSort.dir === "desc" ? "descending" : "ascending") : "none" },
+        h("button", { type: "button", title: "Sort by " + label.toLowerCase(), onclick: sortBy },
+          label, h("span", { class: "sort-arrow", "aria-hidden": "true", text: on ? (sendersSort.dir === "desc" ? "▼" : "▲") : "↕" })));
+    };
     const max = Math.max(1, ...list.map((x) => x.n));
     const body = list.length ? h("div", { class: "table-wrap" }, h("table", { class: "data senders" },
-      h("thead", {}, h("tr", {}, h("th", { text: "Sender" }), h("th", { class: "num", text: "Risky msgs" }),
-        h("th", { class: "num", text: "Max" }), h("th", { text: "Mostly" }), h("th", { text: "Last seen" }))),
+      h("thead", {}, h("tr", {}, h("th", { text: "Sender" }), sortTh("n", "Risky msgs", "num"),
+        sortTh("max_score", "Max", "num"), h("th", { text: "Mostly" }), sortTh("last_seen", "Last seen"))),
       h("tbody", {}, list.map((x) => {
         const bar = h("i"); bar.style.width = (100 * x.n / max) + "%";
         return h("tr", { class: "clickable" + (x.n >= 2 ? " repeat" : ""), tabindex: "0", title: "Show all messages from " + x.sender,
@@ -892,9 +913,10 @@
       }))))
       : h("div", { class: "empty-chart", text: "No sender has sent a message scoring " + s.min_score + " or more in this period." });
     const repeat = list.filter((x) => x.n >= 2).length, block = list.filter((x) => x.block).length;
-    return chartCard("Repeat senders", fmtInt(s.risky_sender_count) + " senders sent risky messages · " + repeat +
+    const card = chartCard("Repeat senders", fmtInt(s.risky_sender_count) + " senders sent risky messages · " + repeat +
       " of the top " + list.length + " sent 2 or more · ⛔ " + block + " should be blocked (" + s.block_after + "+ risky messages) · " +
       "the same number written differently counts as one sender · click a sender to see all their messages", body);
+    return card;
   }
 
   function kpi(label, value, sub, hero, extra) {
