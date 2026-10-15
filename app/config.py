@@ -43,6 +43,10 @@ def env(key: str, default: str | None = None) -> str | None:
 # Automatic checking (phone app, inbox watcher, browser extension)
 LAN_MODE = HOST not in ("127.0.0.1", "localhost", "::1")   # server reachable from other devices
 LOOPBACK = {"127.0.0.1", "::1", "localhost"}
+# Public hosting (Vercel): nobody is "on the laptop", so laptop-only rights (one-click admin, History
+# without login, ingest without pairing code) are switched off. The host may make every visitor look
+# like 127.0.0.1, so the address alone cannot be trusted there.
+PUBLIC = os.environ.get("SATARK_PUBLIC") == "1"
 SOURCES_AUTO = ["sms-app", "email-watch", "gmail-web"]
 
 # Accounts and the community feed

@@ -1,0 +1,14 @@
+# What the server needs at run time on Vercel (no training, no tests). Same versions as ../requirements.txt.
+fastapi==0.143.0
+scikit-learn==1.9.1
+numpy==2.5.4
+scipy==1.18.1
+joblib==1.6.0
+tldextract==5.4.0
+python-multipart==0.0.32
+httpx==0.28.1
+fpdf2==2.8.9
+uharfbuzz==0.56.3
+pillow==12.3.0
+fonttools==4.67.0
+defusedxml==0.7.1

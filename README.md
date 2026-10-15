@@ -27,7 +27,7 @@ Use the terminal inside VS Code (the Python environment was created there).
 
 ```bash
 ./run.sh            # start the app, then open http://localhost:8000
-./run.sh test       # run all 348 tests
+./run.sh test       # run all 354 tests
 ./run.sh seed       # add demo cases (dashboard) and demo posts (Feed)
 ./run.sh unseed     # remove the demo cases and demo posts
 ./run.sh demo       # demo web pages with fake scam links (fake social network) on http://127.0.0.1:8765
@@ -177,6 +177,18 @@ Risky messages pop up as live alerts in the web app (admin panel). The phone app
   again (only PNG / JPEG / WebP, at most 3 MB), which also removes hidden data such as GPS positions.
 - With `./run.sh wifi`, other devices on the same Wi-Fi or hotspot open `http://<laptop-ip>:8000` in a browser.
 
+## Online demo (Vercel)
+
+https://satarkai-app.vercel.app runs the whole app (pages and Python server) on Vercel: `api/index.py`,
+`app/cloud.py`, `vercel.json`, `.vercelignore` (keeps `.env`, the database and the Android build out of the upload).
+
+- `SATARK_PUBLIC=1` there: nobody counts as "on the laptop", so no one-click admin and no History without login.
+- Vercel keeps no files: each fresh server instance starts with the demo cases and demo feed posts; new posts,
+  accounts and cases are temporary. The page footer says so.
+- Secrets are set in the Vercel project, never in the code: `GROQ_API_KEY` and `SATARK_ADMIN_PASSWORD`
+  (password of the `admin` account online).
+- Deploy again: `vercel deploy --prod`. The phone app and the browser extension keep using the laptop.
+
 ## Browser extension (optional)
 
 `extension/` warns before a link on any web page opens.
@@ -206,7 +218,7 @@ app/
   static/            index.html, app.js, styles.css, go.html, go.js, Chart.js and Inter font (local copies)
 ml/                  download_data.py, train.py, sanity_legit_urls.txt
 models/              trained models and metrics.json
-tests/               348 tests: unit, API, security, accounts, feed, models, acceptance R1-R9, browser
+tests/               354 tests: unit, API, security, accounts, feed, models, acceptance R1-R9, browser
 extension/           browser extension
 scripts/             seed_demo.py, check_brands.py
 PLAN.md              the plan, design decisions and the findings log

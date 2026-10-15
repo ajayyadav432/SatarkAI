@@ -1,0 +1,19 @@
+# Not needed by the server on Vercel (and .env must never be uploaded). A leading / means
+# "only at the top level": app/data/ (rules, brands, fonts) must be uploaded.
+/.env
+/.venv
+/.git
+/android
+/data
+/demo
+/docs
+/ml
+/tests
+node_modules
+__pycache__
+.pytest_cache
+*.pdf
+*.pptx
+*.db
+/PLAN.md
+/TEST.md

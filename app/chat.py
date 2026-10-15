@@ -21,6 +21,10 @@ from app import config
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_TIMEOUT_S = 20
+GROQ_MAX_TOKENS = 300   # answers are 100-300 tokens; Groq counts this reservation against the per-minute limit
+# Groq's free plan allows each model about 8,000 tokens per minute (about 5 questions). When the main
+# model is busy (HTTP 429) or failing (5xx), the next model is tried; each has its own allowance.
+GROQ_FALLBACK_MODELS = "openai/gpt-oss-120b"
 MAX_REASONS = 6
 
 SYSTEM_PROMPT = (
@@ -59,7 +63,9 @@ def _dotenv() -> dict:
 def settings() -> dict:
     env = _dotenv()
     get = lambda k, d=None: os.environ.get(k) or env.get(k) or d  # noqa: E731
-    return {"key": get("GROQ_API_KEY"), "model": get("GROQ_MODEL", "qwen/qwen3.8-27b")}
+    model = get("GROQ_MODEL", "qwen/qwen3.8-27b")
+    fallbacks = [m.strip() for m in get("GROQ_FALLBACK_MODELS", GROQ_FALLBACK_MODELS).split(",") if m.strip()]
+    return {"key": get("GROQ_API_KEY"), "model": model, "fallbacks": [m for m in fallbacks if m != model]}
 
 
 def status() -> dict:
@@ -167,7 +173,7 @@ def _groq(question: str, history: list[dict], s: dict | None, faq_hits: list[dic
     messages.append({"role": "user", "content": question})
     r = httpx.post(GROQ_URL, timeout=GROQ_TIMEOUT_S,
                    headers={"Authorization": f"Bearer {cfg['key']}"},
-                   json={"model": cfg["model"], "messages": messages, "temperature": 0.2, "max_tokens": 400})
+                   json={"model": cfg["model"], "messages": messages, "temperature": 0.2, "max_tokens": GROQ_MAX_TOKENS})
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"].strip()
 
@@ -181,10 +187,22 @@ def answer(question: str, history: list[dict], result: dict | None, faq_id: str 
     hits = match_faq(question)
     cfg = settings()
     if cfg["key"]:
-        try:
-            return {"answer": _groq(question, history, s, hits, cfg), "source": "ai", "model": cfg["model"]}
-        except (httpx.HTTPError, KeyError, IndexError, ValueError) as err:
-            out = _offline(question, s, hits)
-            out["note"] = "The AI service did not answer (" + type(err).__name__ + "), so this is the built-in answer."
-            return out
+        busy, error = False, ""
+        for model in [cfg["model"]] + cfg.get("fallbacks", []):
+            try:
+                return {"answer": _groq(question, history, s, hits, {**cfg, "model": model}), "source": "ai", "model": model}
+            except httpx.HTTPStatusError as err:
+                code = err.response.status_code
+                busy, error = busy or code == 429, f"HTTP {code}"
+                if code == 429 or code >= 500:
+                    continue                      # this model is busy or down: try the next one
+                break                             # wrong key, bad request: another model will not help
+            except (httpx.HTTPError, KeyError, IndexError, ValueError) as err:
+                error = type(err).__name__
+                break
+        out = _offline(question, s, hits)
+        out["note"] = ("The AI is busy (Groq free plan: about 5 questions a minute per model). This is the built-in "
+                       "answer; ask again in a minute." if busy else
+                       f"The AI service did not answer ({error}), so this is the built-in answer.")
+        return out
     return _offline(question, s, hits)

@@ -188,6 +188,8 @@ def require_admin(request: Request) -> dict:
 
 def is_local(request: Request) -> bool:
     """The request comes from this laptop itself (http://localhost:8000)."""
+    if config.PUBLIC:
+        return False
     return (request.client.host if request.client else "") in config.LOOPBACK
 
 

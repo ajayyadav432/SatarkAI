@@ -1913,6 +1913,11 @@
     catch (err) { toast("Cannot reach the server: " + err.message); return; }
     $("#app-name").textContent = META.app;
     $("#foot-text").textContent = META.app + " " + META.version;
+    if (META.public_demo) {
+      // Online demo (Vercel): the analysis runs on the host, and new posts, accounts and cases are temporary.
+      $(".foot").replaceChildren(h("span", { text: META.app + " " + META.version + " · online demo: messages are analysed on the server; " +
+        "new posts, accounts and cases are temporary and reset when the server restarts · IEEE-IGNITE Hackathon 2026, SKIT025" }));
+    }
     document.title = META.app + " - " + META.tagline;
     initProfile();
     await loadMe();

@@ -10,3 +10,4 @@ data/*.db-*
 .env
 data/mailwatch_state.json
 data/uploads/
+.vercel

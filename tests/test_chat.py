@@ -8,6 +8,9 @@ SCAM = {"text": "Dear customer, your SBI account will be blocked. Update KYC htt
         "sender": "9876501234"}
 
 
+REAL_SETTINGS = chat.settings   # the autouse fixture below replaces chat.settings
+
+
 @pytest.fixture(autouse=True)
 def offline(monkeypatch):
     """Never reach the real AI service from tests, whatever is in .env."""
@@ -87,3 +90,50 @@ def test_groq_failure_falls_back(client, monkeypatch):
     monkeypatch.setattr(chat.httpx, "post", boom)
     r = ask(client, "What is a digital arrest?")
     assert r["source"] == "faq" and "ConnectError" in r["note"]
+
+
+def _groq_by_model(answers: dict):
+    """Fake Groq: answers[model] is a status code or an answer text. Records which models were asked."""
+    asked = []
+
+    def fake_post(url, **kw):
+        model = kw["json"]["model"]
+        asked.append(model)
+        a = answers[model]
+        if isinstance(a, int):
+            return httpx.Response(a, json={"error": {"message": "x"}}, request=httpx.Request("POST", url))
+        return httpx.Response(200, json={"choices": [{"message": {"content": a}}]}, request=httpx.Request("POST", url))
+    return fake_post, asked
+
+
+def test_busy_model_falls_back_to_the_next_model(client, monkeypatch):
+    """Groq's free plan allows about 5 questions a minute per model; then the second model answers."""
+    monkeypatch.setattr(chat, "settings", lambda: {"key": "k", "model": "main", "fallbacks": ["backup"]})
+    fake, asked = _groq_by_model({"main": 429, "backup": "Do not click it."})
+    monkeypatch.setattr(chat.httpx, "post", fake)
+    r = ask(client, "Is this link safe?")
+    assert r["source"] == "ai" and r["model"] == "backup" and r["answer"] == "Do not click it."
+    assert asked == ["main", "backup"]
+
+
+def test_all_models_busy_says_so(client, monkeypatch):
+    monkeypatch.setattr(chat, "settings", lambda: {"key": "k", "model": "main", "fallbacks": ["backup"]})
+    fake, asked = _groq_by_model({"main": 429, "backup": 429})
+    monkeypatch.setattr(chat.httpx, "post", fake)
+    r = ask(client, "What is a digital arrest?")
+    assert r["source"] == "faq" and "busy" in r["note"] and asked == ["main", "backup"]
+
+
+def test_wrong_key_does_not_try_other_models(client, monkeypatch):
+    monkeypatch.setattr(chat, "settings", lambda: {"key": "k", "model": "main", "fallbacks": ["backup"]})
+    fake, asked = _groq_by_model({"main": 401, "backup": "never"})
+    monkeypatch.setattr(chat.httpx, "post", fake)
+    r = ask(client, "What is a digital arrest?")
+    assert r["source"] == "faq" and "HTTP 401" in r["note"] and asked == ["main"]
+
+
+def test_fallback_models_from_env(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "k")
+    monkeypatch.setenv("GROQ_MODEL", "a")
+    monkeypatch.setenv("GROQ_FALLBACK_MODELS", "b, a, c")
+    assert REAL_SETTINGS()["fallbacks"] == ["b", "c"]

@@ -204,6 +204,7 @@ def meta():
         "channels": config.CHANNELS, "statuses": config.CASE_STATUSES,
         "max_text_chars": config.MAX_TEXT_CHARS, "max_bulk_rows": config.MAX_BULK_ROWS,
         "warn_from_level": config.WARN_FROM_LEVEL,
+        "public_demo": config.PUBLIC,
         "password_min": config.PASSWORD_MIN, "max_post_title": config.MAX_POST_TITLE,
         "max_post_body": config.MAX_POST_BODY, "max_comment": config.MAX_COMMENT,
         "samples": samples["samples"],
@@ -238,8 +239,7 @@ def api_chat(body: ChatIn):
 def api_ingest(body: IngestIn, request: Request):
     """A message that arrived by itself: SMS on the phone, or an e-mail opened in Gmail.
     From another device the pairing code (header X-Satark-Token) is required."""
-    client = request.client.host if request.client else ""
-    if client not in config.LOOPBACK and not ingest.token_ok(request.headers.get("x-satark-token")):
+    if not accounts.is_local(request) and not ingest.token_ok(request.headers.get("x-satark-token")):
         raise HTTPException(status_code=401, detail="Wrong or missing pairing code.")
     if not body.text.strip():
         raise HTTPException(status_code=422, detail="text must not be empty")
@@ -497,7 +497,7 @@ def _start_session(user: dict) -> JSONResponse:
 def api_register(body: AuthIn, request: Request):
     """Create an account and log in. The first account made on this laptop becomes admin."""
     try:
-        user = accounts.register(body.username, body.password, local=_client(request) in config.LOOPBACK)
+        user = accounts.register(body.username, body.password, local=accounts.is_local(request))
     except accounts.AuthError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from None
     return _start_session(user)

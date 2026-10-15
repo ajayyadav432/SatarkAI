@@ -331,3 +331,31 @@ def test_demo_feed_posts_can_be_added_and_removed(client):
     assert [p["id"] for p in client.get("/api/feed").json()["posts"]] == [real]
     r = client.post("/api/auth/register", json={"username": "demo_me", "password": "password-123"})
     assert r.status_code == 400 and "demo_" in r.json()["detail"]
+
+
+def test_public_hosting_trusts_nobody_as_the_laptop(fresh_db, monkeypatch):
+    """On Vercel every visitor may look like 127.0.0.1, so laptop-only rights are switched off."""
+    monkeypatch.setattr(config, "PUBLIC", True)
+    with TestClient(app, client=("127.0.0.1", 50003)) as c:
+        assert c.get("/api/auth/me").json()["local"] is False
+        assert c.get("/api/meta").json()["public_demo"] is True
+        assert c.get("/api/cases").status_code == 401
+        assert c.post("/api/auth/quick", json={"who": "admin"}).status_code == 403
+        r = c.post("/api/auth/register", json={"username": "first_one", "password": "password-123"})
+        assert r.json()["user"]["role"] == "user"                        # never admin by being first
+        assert c.post("/api/ingest", json={"text": SCAM_KYC, "channel": "sms", "source": "sms-app"}).status_code == 401
+
+
+def test_cloud_start_creates_admin_from_secret_and_demo_data(fresh_db, monkeypatch):
+    from app import cloud
+    monkeypatch.setenv("SATARK_ADMIN_PASSWORD", "secret-admin-pw-1")
+    monkeypatch.setenv("SATARK_SEED", "1")
+    cloud.prepare()
+    cloud.prepare()                                                       # a second start changes nothing
+    with db.connect() as con:
+        assert [tuple(r) for r in con.execute("SELECT username, role FROM users WHERE role = 'admin'")] == [("admin", "admin")]
+    assert db.list_cases()["total"] > 0
+    with TestClient(app) as c:
+        assert c.get("/api/feed").json()["total"] > 0
+        assert c.post("/api/auth/login", json={"username": "admin", "password": "secret-admin-pw-1"}).status_code == 200
+        assert c.get("/api/cases").status_code == 200
