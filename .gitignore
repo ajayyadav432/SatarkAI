@@ -9,3 +9,4 @@ data/*.db-*
 *.pdf
 .env
 data/mailwatch_state.json
+data/uploads/

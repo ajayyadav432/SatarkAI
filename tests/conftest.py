@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT))
 # Must be set before app.config is imported.
 _TMP = tempfile.mkdtemp(prefix="satark-test-")
 os.environ["SATARK_DB"] = str(Path(_TMP) / "test.db")
+os.environ["SATARK_UPLOADS"] = str(Path(_TMP) / "uploads")
 os.environ["SATARK_NO_MAILWATCH"] = "1"   # never start the real inbox watcher in tests
 os.environ["SATARK_TOKEN"] = "test-pairing-code"
 
@@ -30,12 +31,30 @@ def fresh_db(tmp_path, monkeypatch):
     return tmp_path / "cases.db"
 
 
+ADMIN = ("admin", "admin-password-1")
+
+
 @pytest.fixture()
-def client(fresh_db):
+def anon(fresh_db):
+    """A visitor who is not logged in."""
     from fastapi.testclient import TestClient
 
     from app.main import app
     with TestClient(app) as c:
+        yield c
+
+
+@pytest.fixture()
+def client(fresh_db):
+    """Logged in as the admin (made directly, as if registered on the laptop), so History,
+    Dashboard and the other admin pages work in the older tests."""
+    from fastapi.testclient import TestClient
+
+    from app import accounts
+    from app.main import app
+    accounts.register(*ADMIN, local=True)
+    with TestClient(app) as c:
+        assert c.post("/api/auth/login", json={"username": ADMIN[0], "password": ADMIN[1]}).status_code == 200
         yield c
 
 

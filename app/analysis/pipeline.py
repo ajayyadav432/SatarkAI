@@ -231,10 +231,6 @@ def analyze(text: str, channel: str = "auto", sender: str | None = None, lookup:
         evidence.extend(s_factors)
         notes.extend(s_notes)
 
-    # Earlier risky messages from the same sender (e.g. a follow-up to a phishing link sent before).
-    # The follow-up reason applies only when the message has no link of its own (its own link is checked anyway).
-    evidence.extend(followup.evidence(text, history, has_own_link=bool(url_results)))
-
     mobiles = [p for p in entities.phones if phone_kind(p) == "mobile"]
     if mobiles and "callback" in fired and (mentioned or strong_fired & {"threat", "kyc", "bill", "authority", "refund", "courier"}):
         evidence.append({
@@ -296,6 +292,31 @@ def analyze(text: str, channel: str = "auto", sender: str | None = None, lookup:
     factors = scoring.dedupe(evidence)
     raw_score = scoring.combine(f["weight"] for f in factors)
     score, capped = scoring.apply_cap(raw_score, factors)
+    own_score, own_level = score, scoring.level_for(score)
+
+    # 6. Earlier risky messages from the same sender -----------------------------------------
+    # The score is this message's own, unless it points back to an earlier phishing link
+    # ("open the link I sent") or is itself already suspicious (Low or higher). Then the
+    # sender's last risky messages count too, and both scores are reported.
+    history_raised = False
+    h_factors = followup.evidence(text, history, has_own_link=bool(url_results))
+    if h_factors:
+        is_followup = any(f["id"] == "followup_link" for f in h_factors)
+        if is_followup or own_score >= followup.SUSPICIOUS_FROM:
+            factors = scoring.dedupe(evidence + h_factors)
+            raw_score = scoring.combine(f["weight"] for f in factors)
+            score, capped = scoring.apply_cap(raw_score, factors)
+            history_raised = score > own_score
+            if history_raised:
+                notes.append({"title": f"This message alone: {own_level} {own_score}",
+                              "detail": "The score is higher because of this sender's earlier risky messages "
+                                        "(see \"Why this level\")."})
+        else:
+            n = history["count"]
+            notes.append({"title": f"This sender sent {n} risky message{'s' if n != 1 else ''} earlier",
+                          "detail": "Not counted in the score: this message looks harmless on its own and does "
+                                    "not point back to an earlier message or link. Stay careful with this sender."})
+
     if capped:
         notes.append({"title": f"Score limited to {score}", "detail": scoring.CAP_REASON})
     level = scoring.level_for(score)
@@ -309,6 +330,9 @@ def analyze(text: str, channel: str = "auto", sender: str | None = None, lookup:
 
     return {
         "score": score,
+        "own_score": own_score,
+        "own_level": own_level,
+        "history_raised": history_raised,
         "score_uncapped": raw_score,
         "cap_applied": capped,
         "level": level,

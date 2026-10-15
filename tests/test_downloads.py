@@ -35,8 +35,8 @@ def test_apk_missing_is_explained(client, tmp_path, monkeypatch):
     assert r.status_code == 404 and "gradlew" in r.json()["detail"]
 
 
-def test_lan_mode_allows_downloads_only(client, monkeypatch):
+def test_lan_visitors_can_download_but_not_reach_history(anon, monkeypatch):
     monkeypatch.setattr(config, "LAN_MODE", True)
-    assert client.get("/download/" + downloads.EXT_NAME).status_code == 200
-    assert client.get("/api/downloads").status_code == 403
-    assert client.get("/download/../api/cases").status_code in (403, 404)
+    assert anon.get("/download/" + downloads.EXT_NAME).status_code == 200
+    assert anon.get("/api/downloads").status_code == 200
+    assert anon.get("/download/../api/cases").status_code in (401, 404)

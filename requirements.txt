@@ -9,5 +9,11 @@ tldextract==5.4.0
 python-multipart==0.0.32
 pandas==3.0.6
 pyarrow==26.0.0
+# PDF case reports (fpdf2 brings Pillow, also used to check feed screenshots); uharfbuzz shapes Hindi text
+fpdf2==2.8.9
+uharfbuzz==0.56.3
+pillow==12.3.0
+fonttools==4.67.0
+defusedxml==0.7.1
 pytest==9.1.1
 httpx==0.28.1

@@ -65,7 +65,46 @@ def test_follow_up_with_its_own_link_is_judged_on_that_link(client):
     r = client.post("/api/analyze", json={"text": "Open the link: https://www.hdfcbank.com/", "sender": "9812345670",
                                           "save": False}).json()
     assert "followup_link" not in [f["id"] for f in r["factors"]]
-    assert "repeat_sender" in [f["id"] for f in r["factors"]]
+    # A link to the bank's official site is harmless on its own, so it keeps its own score.
+    assert "repeat_sender" not in [f["id"] for f in r["factors"]]
+    assert r["score"] == r["own_score"] and r["history_raised"] is False
+
+
+def test_harmless_message_keeps_its_own_score(client):
+    """'hello' from a sender who sent scams before is not raised; a note mentions the earlier messages."""
+    for i in range(3):
+        sms(client, PHISH, "+919812345670", str(i))
+    alone = client.post("/api/analyze", json={"text": "hello", "save": False}).json()
+    r = client.post("/api/analyze", json={"text": "hello", "sender": "9812345670", "save": False}).json()
+    assert r["score"] == alone["score"] == r["own_score"] and r["level"] == "Safe"
+    assert r["history_raised"] is False and "repeat_sender" not in [f["id"] for f in r["factors"]]
+    assert any(n["title"] == "This sender sent 3 risky messages earlier" for n in r["notes"])
+    assert r["block"]["count"] == 3                       # blocking is still recommended
+
+
+def test_suspicious_message_counts_earlier_messages(client):
+    """A message that is already suspicious on its own (Low or higher) adds the sender's earlier messages."""
+    text = "Final reminder: your account is suspended today. Act now."
+    alone = client.post("/api/analyze", json={"text": text, "save": False}).json()
+    assert alone["score"] >= 20
+    sms(client, PHISH, "+919812345670", "1")
+    r = sms(client, text, "+919812345670", "2")
+    assert r["history_raised"] is True and r["score"] > r["own_score"] == alone["score"]
+    assert r["own_level"] == alone["level"]
+
+
+def test_follow_up_reports_both_scores(client):
+    sms(client, PHISH, "+919812345670", "1")
+    r = sms(client, FOLLOW, "+919812345670", "2")
+    assert r["history_raised"] is True and r["own_score"] < 40 and r["level"] in ("High", "Critical")
+
+
+def test_only_the_last_three_risky_messages_are_looked_at(client):
+    sms(client, PHISH, "+919812345670", "old")            # oldest: the only one with a phishing link
+    for i in range(3):
+        sms(client, "Final reminder: your account is suspended today. Act now.", "+919812345670", str(i))
+    h = db.sender_history("9812345670")
+    assert h["count"] == 4 and len(h["cases"]) == 3 and h["links"] == []
 
 
 def test_block_recommended_after_three_risky_messages(client):

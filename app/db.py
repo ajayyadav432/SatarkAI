@@ -46,6 +46,52 @@ CREATE TABLE IF NOT EXISTS case_indicators (
 CREATE INDEX IF NOT EXISTS idx_indicators_case ON case_indicators(case_id);
 CREATE INDEX IF NOT EXISTS idx_indicators_kind ON case_indicators(kind, value);
 
+-- Accounts. role is 'user' or 'admin'. Passwords are stored as scrypt hashes only.
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT    NOT NULL,
+    role          TEXT    NOT NULL DEFAULT 'user',
+    blocked       INTEGER NOT NULL DEFAULT 0,
+    created_at    TEXT    NOT NULL
+);
+-- Only a SHA-256 of each session token is stored, so a copied database cannot log anyone in.
+CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT    PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT    NOT NULL,
+    expires_at TEXT    NOT NULL
+);
+
+-- Community feed. scan_json is a result the server computed itself, never one sent by a browser.
+CREATE TABLE IF NOT EXISTS posts (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT    NOT NULL,
+    title      TEXT    NOT NULL,
+    body       TEXT    NOT NULL DEFAULT '',
+    scan_json  TEXT,
+    image      TEXT,
+    hidden     INTEGER NOT NULL DEFAULT 0,
+    pinned     INTEGER NOT NULL DEFAULT 0,
+    verified   INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at);
+CREATE TABLE IF NOT EXISTS votes (
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    value   INTEGER NOT NULL,
+    PRIMARY KEY (post_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS comments (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT    NOT NULL,
+    body       TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS cases_fts USING fts5(
     text, sender, indicators, category, brands, notes,
     tokenize = "unicode61 categories 'L* N* Co Mn Mc'"
@@ -123,8 +169,9 @@ def block_advice(sender: str | None, risky_count: int) -> dict | None:
             "count": risky_count, "how": how}
 
 
-def sender_history(sender: str | None, min_score: int | None = None, limit: int = 25) -> dict | None:
-    """Earlier risky messages (score >= min_score) from the same sender, all time, newest first."""
+def sender_history(sender: str | None, min_score: int | None = None, limit: int = 3) -> dict | None:
+    """The sender's latest `limit` risky messages (score >= min_score), newest first.
+    count is the all-time number of risky messages (used for the block recommendation)."""
     key = sender_key(sender)
     if not key:
         return None

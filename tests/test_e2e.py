@@ -8,6 +8,7 @@ import socket
 import subprocess
 import sys
 import time
+import json
 import urllib.request
 from pathlib import Path
 
@@ -16,6 +17,7 @@ import pytest
 playwright_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
 ROOT = Path(__file__).resolve().parent.parent
 pytestmark = pytest.mark.e2e
+ADMIN = ("e2e-admin", "e2e-admin-password")
 
 
 def wait_until(page, expression: str, timeout: float = 8.0) -> None:
@@ -57,6 +59,10 @@ def server(tmp_path_factory):
                 time.sleep(0.2)
         else:
             raise RuntimeError("server did not start")
+        # The first account made on this computer is the admin.
+        req = urllib.request.Request(base + "/api/auth/register", data=json.dumps(
+            {"username": ADMIN[0], "password": ADMIN[1]}).encode(), headers={"Content-Type": "application/json"})
+        assert json.load(urllib.request.urlopen(req))["user"]["role"] == "admin"
         yield base
     finally:
         proc.terminate()
@@ -74,16 +80,31 @@ def browser():
         b.close()
 
 
-@pytest.fixture()
-def page(browser):
+def _new_page(browser, server, login=True):
     ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+    if login:   # same cookie jar as the page
+        assert ctx.request.post(server + "/api/auth/login", data={"username": ADMIN[0], "password": ADMIN[1]}).ok
     pg = ctx.new_page()
     pg.problems = []
     pg.on("console", lambda m: pg.problems.append(f"{m.type}: {m.text}") if m.type == "error" else None)
     pg.on("pageerror", lambda e: pg.problems.append(f"pageerror: {e}"))
     # Fail the test if the page tries to reach anything except our own server.
     pg.external = []
-    pg.on("request", lambda r: pg.external.append(r.url) if not r.url.startswith(("http://127.0.0.1", "data:", "about:")) else None)
+    pg.on("request", lambda r: pg.external.append(r.url) if not r.url.startswith(("http://127.0.0.1", "data:", "about:", "blob:")) else None)
+    return ctx, pg
+
+
+@pytest.fixture()
+def page(browser, server):
+    """Logged in as the admin (admin panel)."""
+    ctx, pg = _new_page(browser, server)
+    yield pg
+    ctx.close()
+
+
+@pytest.fixture()
+def guest(browser, server):
+    ctx, pg = _new_page(browser, server, login=False)
     yield pg
     ctx.close()
 
@@ -225,11 +246,12 @@ def test_warning_page_for_official_and_invalid_links(page, server):
 
 def test_phone_width_has_no_sideways_scroll(browser, server):
     ctx = browser.new_context(viewport={"width": 390, "height": 800})
+    assert ctx.request.post(server + "/api/auth/login", data={"username": ADMIN[0], "password": ADMIN[1]}).ok
     pg = ctx.new_page()
     pg.goto(server + "/")
     pg.click("text=PayPal e-mail")
     pg.wait_for_selector(".score-num")
-    for hash_ in ("", "#history", "#dashboard", "#about"):
+    for hash_ in ("", "#feed", "#history", "#dashboard", "#admin", "#about"):
         pg.goto(server + "/" + hash_)
         pg.wait_for_timeout(400)
         assert pg.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), hash_
@@ -245,3 +267,75 @@ def test_dark_theme_toggle_is_remembered(page, server):
     assert before != after and page.evaluate("document.documentElement.dataset.theme") == "dark"
     page.reload()
     assert page.evaluate("document.documentElement.dataset.theme") == "dark"
+
+
+def test_guest_sees_no_admin_pages_and_must_log_in_to_post(guest, server):
+    guest.goto(server + "/#feed")
+    guest.wait_for_selector(".composer-guest")
+    assert guest.locator(".tabs a[data-view=history]").is_hidden()
+    assert guest.inner_text("#profile-name") == "Log in"
+    guest.goto(server + "/#history")
+    guest.wait_for_selector("#auth-dialog[open]")
+    assert "admins" in guest.inner_text("#auth-why")
+    assert not guest.locator("#view-history").is_visible()
+
+
+def test_register_post_vote_comment_and_report(guest, server):
+    """A new user on 'another device': registers, shares a scan from Analyze, votes and comments.
+    Text typed by users is shown as text, never run as HTML."""
+    pg = guest
+    pg.goto(server + "/")
+    pg.click("#profile-btn")
+    pg.click("#profile-menu >> text=Register")
+    pg.fill("#auth-user", "neha_k")
+    pg.fill("#auth-pass", "neha-password-1")
+    pg.click("#auth-submit")
+    wait_until(pg, "document.querySelector('#profile-name').textContent === 'neha_k'")
+    assert pg.inner_text("#profile-role") == "User"
+    assert pg.locator(".tabs a[data-view=admin]").is_hidden()
+
+    pg.click("text=Bank KYC (SMS)")
+    pg.wait_for_selector("#result >> text=Share to Feed")
+    pg.click("#result >> text=Share to Feed")
+    pg.wait_for_selector("#composer .attached")
+    evil = '<img src=x onerror="window.__xss=1">Fake SBI KYC'
+    pg.fill("#post-title", evil)
+    pg.fill("#post-body", "<script>window.__xss=2</script>Came at 9 pm")
+    pg.click("#post-submit")
+    pg.wait_for_selector("#feed-list .post")
+    card = pg.locator("#feed-list .post").first
+    assert card.locator(".post-title").inner_text() == evil
+    assert "Critical" in card.locator(".post-scan").inner_text()
+    assert "hxxp://sbi-kyc-update[.]xyz" in card.locator(".post-scan-text").inner_text()   # link in safe form
+    assert pg.evaluate("window.__xss") is None and card.locator(".post-title img, .post-body script").count() == 0
+
+    card.locator(".vote-btn.up").click()
+    wait_until(pg, "document.querySelector('#feed-list .vote-score').textContent === '1'")
+    card.locator("text=Comments").click()
+    card.locator(".comment-form textarea").fill("My mother got the same one")
+    card.locator(".comment-form button").click()
+    wait_until(pg, "document.querySelectorAll('#feed-list .comment').length === 1")
+
+    with pg.expect_download() as dl:
+        card.locator("text=PDF report").click()
+    assert dl.value.suggested_filename.endswith(".pdf")
+    assert pg.problems == [] and pg.external == []
+
+
+def test_admin_panel_switch_and_moderation(page, server):
+    page.goto(server + "/#feed")
+    page.wait_for_selector("#feed-list .post")
+    assert page.locator(".tabs a[data-view=history]").is_visible()
+    assert page.locator("#feed-list .post .mod-bar").count() >= 1
+    page.locator("#feed-list .post .mod-bar >> text=Pin").first.click()
+    page.wait_for_selector("#feed-list .post.pinned")
+    page.click("#profile-btn")
+    page.check("#profile-menu input[name=panel][value=user]")
+    wait_until(page, "!document.querySelector('.tabs a[data-view=history]').offsetParent")
+    assert page.locator("#feed-list .post .mod-bar").count() == 0
+    page.click("#profile-btn")
+    page.check("#profile-menu input[name=panel][value=admin]")
+    page.goto(server + "/#admin")
+    page.wait_for_selector("#users-table tbody tr")
+    assert "neha_k" in page.inner_text("#users-table") or page.locator("#users-table tbody tr").count() >= 1
+    assert page.problems == []

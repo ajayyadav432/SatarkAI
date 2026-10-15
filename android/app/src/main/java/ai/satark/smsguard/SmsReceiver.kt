@@ -27,9 +27,7 @@ class SmsReceiver : BroadcastReceiver() {
                     val item = try {
                         val r = SatarkClient.checkSms(store.serverUrl, store.pairingCode, sender, text, "$sender-$time-${text.hashCode()}")
                         Notifier.maybeBlock(context, r)
-                        val reasons = r.optJSONArray("reasons")
-                        Checked(System.currentTimeMillis(), sender, text, r.optString("level"), r.optInt("score"),
-                            r.optString("category"), if (reasons != null && reasons.length() > 0) reasons.getString(0) else null, null)
+                        Checked.fromResponse(sender, text, r)
                     } catch (e: Exception) {
                         Log.w(TAG, "check failed", e)
                         Checked(System.currentTimeMillis(), sender, text, null, null, null, null, e.message ?: e.javaClass.simpleName)

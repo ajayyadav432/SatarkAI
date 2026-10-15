@@ -16,6 +16,10 @@ RAW_DATA_DIR = ROOT / "data" / "raw"
 # Tests point this at a temporary file so they never touch real history.
 DB_PATH = Path(os.environ.get("SATARK_DB", ROOT / "data" / "history.db"))
 
+# Screenshots attached to feed posts. Tests point this at a temporary folder.
+UPLOAD_DIR = Path(os.environ.get("SATARK_UPLOADS", ROOT / "data" / "uploads"))
+FONTS_DIR = KNOWLEDGE_DIR / "fonts"   # Noto Sans (+ Devanagari) for PDF reports
+
 HOST = os.environ.get("SATARK_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SATARK_PORT", "8000"))
 
@@ -40,6 +44,16 @@ def env(key: str, default: str | None = None) -> str | None:
 LAN_MODE = HOST not in ("127.0.0.1", "localhost", "::1")   # server reachable from other devices
 LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 SOURCES_AUTO = ["sms-app", "email-watch", "gmail-web"]
+
+# Accounts and the community feed
+SESSION_COOKIE = "satark_session"
+SESSION_DAYS = 7
+PASSWORD_MIN = 8
+MAX_POST_TITLE = 150
+MAX_POST_BODY = 5_000
+MAX_COMMENT = 2_000
+MAX_IMAGE_BYTES = 3 * 1024 * 1024
+FEED_PAGE_SIZE = 20
 
 # Input limits
 MAX_TEXT_CHARS = 20_000

@@ -2,18 +2,25 @@
 
 A scammer may send a phishing link in one message and, later, a harmless-looking follow-up such as
 "Please open the link I sent you". On its own the follow-up has nothing suspicious in it. SatarkAI
-therefore looks at the same sender's earlier risky messages (History, all time) and adds:
+therefore looks at the same sender's last risky messages (History, the last HISTORY_LIMIT) and adds:
 
 - repeat_sender: the sender already sent risky messages (weight 0.30 for one, 0.38 for two, 0.45 for three or more)
 - followup_link: the message points back to an earlier message and that sender earlier sent a risky link (0.65)
+
+The pipeline adds these only when the message is a follow-up (followup_link) or is already suspicious on its
+own (score SUSPICIOUS_FROM or more, i.e. Low or higher). A plain "hello" keeps its own score.
 """
 from __future__ import annotations
 
 import re
 
+from app import config
+
 REPEAT_WEIGHT = {1: 0.30, 2: 0.38}
 REPEAT_WEIGHT_MAX = 0.45
 FOLLOWUP_WEIGHT = 0.65
+HISTORY_LIMIT = 3        # how many of the sender's latest risky messages are looked at
+SUSPICIOUS_FROM = dict(config.RISK_LEVELS)["Low"]   # own score from which earlier messages count
 
 # Phrases that refer back to an earlier message or link (English, Hinglish, Hindi).
 _REFERENCE = re.compile(

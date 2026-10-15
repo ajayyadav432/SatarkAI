@@ -41,6 +41,9 @@ def new_token() -> str:
 def _summary(result: dict, case_id: int | None, source: str) -> dict:
     return {
         "case_id": case_id, "source": source, "level": result["level"], "score": result["score"],
+        # When earlier messages from the sender raised the score, the message's own score too.
+        "own_level": result["own_level"], "own_score": result["own_score"],
+        "history_raised": result["history_raised"],
         "category": result.get("category"), "summary": result.get("summary"),
         "reasons": [f["title"] for f in result.get("factors", [])[:3]],
         "advice": (result.get("advice") or [])[:2],

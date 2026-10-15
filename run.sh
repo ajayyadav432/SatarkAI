@@ -13,10 +13,14 @@ cd "$(dirname "$0")"
 
 # (Re)create the environment when it is missing or was made by a different Python,
 # for example after copying the folder to another computer.
-if ! .venv/bin/python -c "import fastapi, sklearn, tldextract, uvicorn" 2>/dev/null; then
-  echo "Creating the Python environment (first run only, needs internet)..."
-  rm -rf .venv
-  python3 -m venv .venv
+if ! .venv/bin/python -c "import fastapi, sklearn, tldextract, uvicorn, fpdf, uharfbuzz, PIL" 2>/dev/null; then
+  if .venv/bin/python -c "import sys" 2>/dev/null; then
+    echo "Installing missing Python packages (needs internet)..."
+  else
+    echo "Creating the Python environment (first run only, needs internet)..."
+    rm -rf .venv
+    python3 -m venv .venv
+  fi
   .venv/bin/python -m pip install --quiet --disable-pip-version-check -r requirements.txt
 fi
 PY=.venv/bin/python

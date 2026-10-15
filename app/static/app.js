@@ -65,7 +65,9 @@
           ? data.detail.map((d) => (d.loc ? d.loc[d.loc.length - 1] + ": " : "") + d.msg).join("; ")
           : String(data.detail);
       }
-      throw new Error(msg);
+      const err = new Error(msg);
+      err.status = res.status;
+      throw err;
     }
     return data;
   }
@@ -171,7 +173,9 @@
       metaBits.push(pill("Not saved · score below " + r.saved_min_score));
     const actions = h("div", { class: "verdict-actions" },
       h("button", { class: "btn small", type: "button", onclick: () => openChat("Why is this rated " + r.level + "?") }, "Ask why"),
-      h("button", { class: "btn small", type: "button", onclick: () => copyReport(r) }, "Copy report"));
+      h("button", { class: "btn small", type: "button", onclick: () => copyReport(r) }, "Copy report"),
+      h("button", { class: "btn small", type: "button", onclick: () => downloadScanPdf() }, "Download PDF"),
+      h("button", { class: "btn small primary", type: "button", onclick: () => shareToFeed(r) }, "Share to Feed"));
     return h("div", { class: "card verdict-card v-" + r.level, id: "sec-verdict" },
       h("div", { class: "verdict" },
         h("div", { class: "score-box", role: "img", "aria-label": "Risk score " + r.score + " out of 100" },
@@ -183,6 +187,8 @@
           h("div", { class: "verdict-meta" }, metaBits),
           h("h2", { text: r.summary }),
           meter(r.score, r.level),
+          r.history_raised ? h("div", { class: "own-score",
+            text: "This message alone: " + r.own_level + " " + r.own_score + ". Raised by this sender's earlier risky messages." }) : null,
           r.elapsed_ms !== undefined ? h("div", { class: "elapsed", text: r.elapsed_ms + " ms · offline" }) : null)),
       r.block ? blockBanner(r.block) : null,
       r.level === "Critical" ? reportBanner(r) : null,
@@ -545,8 +551,7 @@
       return b;
     };
     try {
-      const [s, card] = await Promise.all([api("/api/stats?days=90"), api("/api/model-card")]);
-      const k = s.kpis;
+      const [k, card] = await Promise.all([api("/api/stats/summary"), api("/api/model-card")]);
       host.replaceChildren();
       countUp(tile("checked", "Last 90 days" + (k.demo ? ", including " + k.demo + " demo cases" : "")), k.total);
       countUp(tile("high-risk", k.high_risk_share + "% rated High or Critical, last 90 days"), k.high_risk);
@@ -774,7 +779,9 @@
       h("div", { class: "case-admin" },
         h("label", { class: "field" }, h("span", { text: "Status" }), status),
         h("label", { class: "field" }, h("span", { text: "Notes" }), notes),
-        h("div", { class: "actions" }, save, del)));
+        h("div", { class: "actions" }, save,
+          h("button", { class: "btn", type: "button", onclick: () => downloadPdf("/api/cases/" + c.id + "/report.pdf", null, "satarkai-case-" + c.id + ".pdf") }, "PDF"),
+          del)));
     $("#case-body").replaceChildren(admin, ...renderResult(c.result, null));
     const dlg = $("#case-dialog");
     if (!dlg.open) dlg.showModal();
@@ -1417,6 +1424,7 @@
   }
 
   async function pollAlerts() {
+    if (!adminPanel()) { alertSeq = null; setTimeout(pollAlerts, 3000); return; }
     try {
       const r = await api("/api/alerts?after=" + (alertSeq || 0));
       if (alertSeq !== null) r.alerts.forEach(showAlert);   // the first poll only learns where the feed is
@@ -1426,14 +1434,426 @@
     setTimeout(pollAlerts, 3000);
   }
 
+  // ---------- accounts, profile menu, user / admin panel ----------
+
+  let ME = null;                 // {id, username, role} or null
+  let panel = "user";            // "user" or "admin"; only admins can switch to "admin"
+  const ADMIN_VIEWS = new Set(["history", "dashboard", "admin"]);
+  const adminPanel = () => Boolean(ME && ME.role === "admin" && panel === "admin");
+
+  async function loadMe() {
+    try { ME = (await api("/api/auth/me")).user; } catch (e) { ME = null; }
+    let saved = null;
+    try { saved = localStorage.getItem("satark-panel"); } catch (e) { /* ignore */ }
+    panel = ME && ME.role === "admin" && saved !== "user" ? "admin" : "user";
+    applyAuth();
+  }
+
+  function setPanel(next) {
+    panel = next;
+    try { localStorage.setItem("satark-panel", next); } catch (e) { /* ignore */ }
+    applyAuth();
+    toast(next === "admin" ? "Admin panel: History, Dashboard, Admin and moderation" : "User panel");
+    route();
+  }
+
+  function applyAuth() {
+    $("#avatar").textContent = ME ? ME.username.slice(0, 1).toUpperCase() : "?";
+    $("#avatar").classList.toggle("on", Boolean(ME));
+    $("#profile-name").textContent = ME ? ME.username : "Log in";
+    $("#profile-role").textContent = !ME ? "Guest" : ME.role === "admin" ? (adminPanel() ? "Admin panel" : "Admin · user panel") : "User";
+    for (const a of $$(".tabs .admin-only")) a.hidden = !adminPanel();
+    document.body.classList.toggle("is-admin-panel", adminPanel());
+    const saveOpt = $("#opt-save");
+    if (saveOpt) saveOpt.closest("label").hidden = !adminPanel();   // History belongs to the admin panel
+    renderProfileMenu();
+  }
+
+  function renderProfileMenu() {
+    const menu = $("#profile-menu");
+    const close = () => { menu.hidden = true; $("#profile-btn").setAttribute("aria-expanded", "false"); };
+    if (!ME) {
+      menu.replaceChildren(
+        h("p", { class: "small muted", text: "Log in to post in the Feed, vote, comment and download PDF reports." }),
+        h("div", { class: "menu-actions" },
+          h("button", { type: "button", class: "btn primary small", onclick: () => { close(); openAuth("login"); } }, "Log in"),
+          h("button", { type: "button", class: "btn small", onclick: () => { close(); openAuth("register"); } }, "Register")));
+      return;
+    }
+    const items = [h("div", { class: "menu-who" }, h("span", { class: "avatar on", "aria-hidden": "true", text: ME.username.slice(0, 1).toUpperCase() }),
+      h("div", {}, h("b", { text: ME.username }), h("div", { class: "small muted", text: ME.role === "admin" ? "Administrator" : "User" })))];
+    if (ME.role === "admin") {
+      const sw = h("div", { class: "segmented compact panel-switch", role: "group", "aria-label": "Panel" },
+        ["user", "admin"].map((v) => h("label", {},
+          h("input", { type: "radio", name: "panel", value: v, checked: panel === v, onchange: () => { close(); setPanel(v); } }),
+          h("span", { text: v === "user" ? "User panel" : "Admin panel" }))));
+      items.push(h("div", { class: "small muted", text: "Switch panel" }), sw);
+    }
+    items.push(h("button", { type: "button", class: "btn small", onclick: async () => {
+      close();
+      try { await api("/api/auth/logout", { method: "POST" }); } catch (e) { /* ignore */ }
+      ME = null; panel = "user"; applyAuth(); toast("Logged out"); route();
+    } }, "Log out"));
+    menu.replaceChildren(...items);
+  }
+
+  function initProfile() {
+    const btn = $("#profile-btn"), menu = $("#profile-menu");
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      menu.hidden = !menu.hidden;
+      btn.setAttribute("aria-expanded", String(!menu.hidden));
+    });
+    document.addEventListener("click", (ev) => {
+      if (!menu.hidden && !menu.contains(ev.target)) { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); }
+    });
+    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") menu.hidden = true; });
+
+    const dlg = $("#auth-dialog"), form = $("#auth-form");
+    $("#auth-close").addEventListener("click", () => dlg.close());
+    for (const r of $$("input[name=auth-mode]")) r.addEventListener("change", () => setAuthMode(r.value));
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const mode = form.querySelector("input[name=auth-mode]:checked").value;
+      const err = $("#auth-error");
+      err.hidden = true;
+      try {
+        const r = await api("/api/auth/" + mode, { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: $("#auth-user").value.trim(), password: $("#auth-pass").value }) });
+        ME = r.user;
+        panel = ME.role === "admin" ? "admin" : "user";
+        try { localStorage.setItem("satark-panel", panel); } catch (e) { /* ignore */ }
+        dlg.close();
+        $("#auth-pass").value = "";
+        applyAuth();
+        toast((mode === "register" ? "Welcome, " : "Logged in as ") + ME.username + (ME.role === "admin" ? " (admin)" : ""));
+        if (pendingAfterLogin) { const f = pendingAfterLogin; pendingAfterLogin = null; f(); }
+        route();
+      } catch (e2) { err.textContent = e2.message; err.hidden = false; }
+    });
+  }
+
+  let pendingAfterLogin = null;
+
+  function setAuthMode(mode) {
+    const reg = mode === "register";
+    $("#auth-title").textContent = reg ? "Create an account" : "Log in";
+    $("#auth-submit").textContent = reg ? "Register" : "Log in";
+    $("#auth-pass").setAttribute("autocomplete", reg ? "new-password" : "current-password");
+    $("#auth-pw-hint").textContent = reg ? "(at least " + (META.password_min || 8) + " characters)" : "";
+    $("#auth-error").hidden = true;
+    const radio = $("input[name=auth-mode][value=" + mode + "]");
+    if (radio) radio.checked = true;
+  }
+
+  /** Open the login dialog. why: shown above the form; then: run after a successful login. */
+  function openAuth(mode, why, then) {
+    setAuthMode(mode || "login");
+    $("#auth-why").textContent = why || "";
+    $("#auth-why").hidden = !why;
+    pendingAfterLogin = then || null;
+    $("#auth-dialog").showModal();
+    $("#auth-user").focus();
+  }
+
+  /** Run fn if logged in, else ask to log in first and run it afterwards. */
+  function needLogin(why, fn) {
+    if (ME) fn(); else openAuth("login", why, fn);
+  }
+
+  // ---------- PDF downloads ----------
+
+  async function downloadPdf(path, body, filename) {
+    try {
+      const res = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+      if (res.status === 401) { openAuth("login", "Log in to download PDF reports.", () => downloadPdf(path, body, filename)); return; }
+      if (!res.ok) { let d = null; try { d = (await res.json()).detail; } catch (e) { /* ignore */ } throw new Error(d || "Could not make the PDF (" + res.status + ")"); }
+      const url = URL.createObjectURL(await res.blob());
+      const a = h("a", { href: url, download: filename });
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      toast("PDF downloaded");
+    } catch (err) { toast(err.message); }
+  }
+
+  function downloadScanPdf() {
+    if (!lastScan) return;
+    needLogin("Log in to download PDF reports.", () =>
+      downloadPdf("/api/report.pdf", { text: lastScan.text, channel: lastScan.channel, sender: lastScan.sender }, "satarkai-report.pdf"));
+  }
+
+  // ---------- Feed ----------
+
+  const feedState = { page: 1, draft: null };   // draft: a scan to attach, from "Share to Feed"
+
+  function shareToFeed(r) {
+    feedState.draft = { text: lastScan ? lastScan.text : r.text, channel: lastScan ? lastScan.channel : r.channel,
+      sender: lastScan ? lastScan.sender : r.sender, level: r.level, score: r.score, category: r.category };
+    needLogin("Log in to share this scan in the Feed.", () => {
+      if (location.hash === "#feed") route(); else location.hash = "#feed";
+      setTimeout(() => { const t = $("#post-title"); if (t) t.focus(); }, 80);
+    });
+  }
+
+  function composer() {
+    if (!ME) {
+      return h("div", { class: "card composer composer-guest" },
+        h("div", {}, h("b", { text: "Got a scam message? Warn others." }),
+          h("div", { class: "small muted", text: "Log in or create an account to post, vote and comment." })),
+        h("div", { class: "menu-actions" },
+          h("button", { type: "button", class: "btn primary", onclick: () => openAuth("login") }, "Log in"),
+          h("button", { type: "button", class: "btn", onclick: () => openAuth("register") }, "Register")));
+    }
+    const d = feedState.draft;
+    const title = h("input", { type: "text", id: "post-title", maxlength: String(META.max_post_title || 150), required: true,
+      placeholder: "Title, e.g. Fake electricity bill SMS from a mobile number" });
+    const body = h("textarea", { id: "post-body", rows: "3", maxlength: String(META.max_post_body || 5000),
+      placeholder: "What happened? How did you notice it was a scam?" });
+    const scan = h("textarea", { id: "post-scan", rows: "3", maxlength: "20000",
+      placeholder: "Paste the scam message here (optional). SatarkAI checks it and attaches the score." });
+    const sender = h("input", { type: "text", id: "post-sender", maxlength: "320", placeholder: "Sender (optional): number, sender ID or e-mail" });
+    const file = h("input", { type: "file", id: "post-image", accept: "image/png,image/jpeg,image/webp" });
+    const attached = h("div", { class: "attached", hidden: !d });
+    if (d) {
+      scan.value = d.text || ""; sender.value = d.sender || "";
+      if (d.category && d.category !== "None" && !title.value) title.value = d.category + " - be careful";
+      attached.append(levelBadge(d.level), h("b", { text: String(d.score) }), h("span", { class: "small", text: "scan from Analyze is attached" }),
+        h("button", { type: "button", class: "btn small", onclick: () => { feedState.draft = null; scan.value = ""; sender.value = ""; attached.hidden = true; } }, "Remove"));
+    }
+    const submit = h("button", { type: "submit", class: "btn primary", id: "post-submit" }, "Post");
+    const form = h("form", { class: "card composer", id: "composer", autocomplete: "off" },
+      h("h3", { text: "Share a scam" }),
+      h("label", { class: "field" }, h("span", { text: "Title" }), title),
+      h("label", { class: "field" }, h("span", { text: "Your story" }), body),
+      attached,
+      h("details", { class: "composer-more", open: Boolean(d) },
+        h("summary", { text: "Scam message, sender and screenshot" }),
+        h("label", { class: "field" }, h("span", { text: "Scam message" }), scan),
+        h("label", { class: "field" }, h("span", { text: "Sender" }), sender),
+        h("label", { class: "field" }, h("span", {}, "Screenshot ", h("small", { class: "muted", text: "(PNG, JPEG or WebP, up to 3 MB; hide your own details)" })), file)),
+      h("div", { class: "actions" }, submit));
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      if (!title.value.trim()) { toast("Give the post a title."); title.focus(); return; }
+      const fd = new FormData();
+      fd.append("title", title.value.trim());
+      fd.append("body", body.value);
+      fd.append("scan_text", scan.value);
+      fd.append("scan_channel", d && d.channel ? d.channel : "auto");
+      fd.append("scan_sender", sender.value.trim());
+      if (file.files[0]) fd.append("image", file.files[0]);
+      submit.disabled = true; submit.textContent = "Posting…";
+      try {
+        await api("/api/feed", { method: "POST", body: fd });
+        feedState.draft = null;
+        toast("Posted. Thank you for warning others.");
+        $("input[name=feed-sort][value=new]").checked = true;
+        feedState.page = 1;
+        loadFeed();
+      } catch (err) {
+        if (err.status === 401) { ME = null; applyAuth(); openAuth("login", "Your login has expired."); }
+        else toast(err.message);
+        submit.disabled = false; submit.textContent = "Post";
+      }
+    });
+    return form;
+  }
+
+  function voteBox(p, onChange) {
+    const score = h("b", { class: "vote-score", text: String(p.score) });
+    const up = h("button", { type: "button", class: "vote-btn up" + (p.my_vote === 1 ? " on" : ""), "aria-label": "Vote up", "aria-pressed": String(p.my_vote === 1) }, "▲");
+    const down = h("button", { type: "button", class: "vote-btn down" + (p.my_vote === -1 ? " on" : ""), "aria-label": "Vote down", "aria-pressed": String(p.my_vote === -1) }, "▼");
+    const cast = (v) => needLogin("Log in to vote.", async () => {
+      const value = p.my_vote === v ? 0 : v;
+      try {
+        const r = await api("/api/feed/" + p.id + "/vote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ value: value }) });
+        p.my_vote = r.my_vote; p.score = r.score;
+        score.textContent = String(r.score);
+        up.classList.toggle("on", r.my_vote === 1); up.setAttribute("aria-pressed", String(r.my_vote === 1));
+        down.classList.toggle("on", r.my_vote === -1); down.setAttribute("aria-pressed", String(r.my_vote === -1));
+        if (onChange) onChange();
+      } catch (err) { toast(err.message); }
+    });
+    up.addEventListener("click", () => cast(1));
+    down.addEventListener("click", () => cast(-1));
+    return h("div", { class: "vote-col" }, up, score, down);
+  }
+
+  function postComplaint(p) {
+    if (p.scan) return complaintText(p.scan);
+    return ["Suspected fraud (shared on the " + META.app + " feed)", "", p.title, "", p.body].join("\n");
+  }
+
+  function reportButtons(p) {
+    return [
+      h("button", { type: "button", class: "btn small", title: "Copies the details, then opens the national cybercrime portal", onclick: () => {
+        const open = () => window.open(CYBERCRIME_PORTAL, "_blank", "noopener");
+        navigator.clipboard.writeText(postComplaint(p)).then(() => { toast("Complaint details copied. Paste them into the complaint form."); open(); },
+          () => { toast("Could not copy the details."); open(); });
+      } }, "🚨 Report on cybercrime.gov.in"),
+      h("button", { type: "button", class: "btn small", onclick: () => { location.href = "tel:1930"; } }, "Call 1930"),
+    ];
+  }
+
+  function moderationButtons(p, reload) {
+    const set = (flags, msg) => async () => {
+      try {
+        await api("/api/feed/" + p.id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(flags) });
+        toast(msg); reload();
+      } catch (err) { toast(err.message); }
+    };
+    return h("div", { class: "mod-bar" }, h("span", { class: "small muted", text: "Admin:" }),
+      h("button", { type: "button", class: "btn small", onclick: set({ pinned: !p.pinned }, p.pinned ? "Unpinned" : "Pinned to the top") }, p.pinned ? "Unpin" : "📌 Pin"),
+      h("button", { type: "button", class: "btn small", onclick: set({ verified: !p.verified }, p.verified ? "Verified mark removed" : "Marked as verified scam") }, p.verified ? "Remove verified" : "✔ Verify scam"),
+      h("button", { type: "button", class: "btn small", onclick: set({ hidden: !p.hidden }, p.hidden ? "Post visible again" : "Post hidden") }, p.hidden ? "Unhide" : "Hide"));
+  }
+
+  function commentsBox(p, countEl) {
+    const box = h("div", { class: "comments" }, h("p", { class: "small muted", text: "Loading comments…" }));
+    const render = (full) => {
+      countEl.textContent = String(full.comment_count);
+      const list = full.comments.map((c) => h("div", { class: "comment" },
+        h("div", { class: "comment-head" }, h("b", { text: c.author }), h("span", { class: "muted small", text: fmtTime(c.created_at) }),
+          c.can_delete ? h("button", { type: "button", class: "link-btn small", onclick: async () => {
+            if (!window.confirm("Delete this comment?")) return;
+            try { await api("/api/feed/comments/" + c.id, { method: "DELETE" }); load(); } catch (err) { toast(err.message); }
+          } }, "Delete") : null),
+        h("p", { class: "comment-body", text: c.body })));
+      let form;
+      if (ME) {
+        const input = h("textarea", { rows: "2", maxlength: String(META.max_comment || 2000), placeholder: "Add a comment", "aria-label": "Comment" });
+        form = h("form", { class: "comment-form" }, input, h("button", { type: "submit", class: "btn small primary" }, "Comment"));
+        form.addEventListener("submit", async (ev) => {
+          ev.preventDefault();
+          if (!input.value.trim()) return;
+          try {
+            render(await api("/api/feed/" + p.id + "/comments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: input.value }) }));
+          } catch (err) { toast(err.message); }
+        });
+      } else {
+        form = h("button", { type: "button", class: "btn small", onclick: () => openAuth("login", "Log in to comment.") }, "Log in to comment");
+      }
+      box.replaceChildren(...(list.length ? list : [h("p", { class: "small muted", text: "No comments yet." })]), form);
+    };
+    const load = async () => {
+      try { render(await api("/api/feed/" + p.id)); } catch (err) { box.replaceChildren(h("p", { class: "small muted", text: err.message })); }
+    };
+    load();
+    return box;
+  }
+
+  /** The message with every link in its safe form (hxxp://bad[.]site), so nobody copies a live link. */
+  function defangText(text, urls) {
+    let t = text || "";
+    for (const u of urls || []) if (u.raw && u.display) t = t.split(u.raw).join(u.display);
+    return t;
+  }
+
+  function postCard(p, reload) {
+    const countEl = h("b", { text: String(p.comment_count) });
+    let comments = null;
+    const toggle = h("button", { type: "button", class: "btn small", "aria-expanded": "false" }, "💬 Comments ", countEl);
+    const card = h("article", { class: "card post" + (p.pinned ? " pinned" : "") + (p.hidden ? " is-hidden" : ""), id: "post-" + p.id });
+    toggle.addEventListener("click", () => {
+      if (comments) { comments.remove(); comments = null; toggle.setAttribute("aria-expanded", "false"); return; }
+      comments = commentsBox(p, countEl); card.querySelector(".post-main").append(comments); toggle.setAttribute("aria-expanded", "true");
+    });
+    const s = p.scan;
+    const scanBox = s ? h("div", { class: "post-scan lvl-border-" + s.level },
+      h("div", { class: "post-scan-head" }, levelBadge(s.level), h("b", { text: s.score + "/100" }),
+        s.category && s.category !== "None" ? pill(s.category) : null,
+        s.history_raised ? h("span", { class: "small muted", text: "alone: " + s.own_level + " " + s.own_score }) : null),
+      s.sender ? h("div", { class: "small muted", text: "From " + s.sender }) : null,
+      h("div", { class: "post-scan-text", text: defangText(s.text, s.urls) }),
+      (s.factors || []).length ? h("ul", { class: "post-reasons small" }, s.factors.slice(0, 3).map((f) => h("li", { text: f.title }))) : null,
+      (s.urls || []).length ? h("div", { class: "small" }, "Links (do not open): ", s.urls.map((u) => h("code", { class: "defanged", text: u.display }))) : null) : null;
+    const actions = h("div", { class: "post-actions" }, toggle, reportButtons(p),
+      s ? h("button", { type: "button", class: "btn small", onclick: () => needLogin("Log in to download PDF reports.", () =>
+        downloadPdf("/api/feed/" + p.id + "/report.pdf", null, "satarkai-post-" + p.id + ".pdf")) }, "📄 PDF report") : null,
+      p.can_delete ? h("button", { type: "button", class: "btn small danger", onclick: async () => {
+        if (!window.confirm("Delete this post? This cannot be undone.")) return;
+        try { await api("/api/feed/" + p.id, { method: "DELETE" }); toast("Post deleted"); reload(); } catch (err) { toast(err.message); }
+      } }, "Delete") : null);
+    card.append(voteBox(p),
+      h("div", { class: "post-main" },
+        h("div", { class: "post-meta small muted" },
+          p.pinned ? h("span", { class: "pin-badge", text: "📌 Pinned" }) : null,
+          p.verified ? h("span", { class: "verified-badge", text: "✔ Verified scam" }) : null,
+          p.hidden ? h("span", { class: "pill", text: "Hidden" }) : null,
+          h("span", {}, "Posted by ", h("b", { text: p.author }), " · " + fmtTime(p.created_at))),
+        h("h3", { class: "post-title", text: p.title }),
+        p.body ? h("p", { class: "post-body", text: p.body }) : null,
+        p.image ? h("a", { href: p.image, target: "_blank", rel: "noopener", class: "post-image-link" },
+          h("img", { class: "post-image", src: p.image, alt: "Screenshot attached by " + p.author, loading: "lazy" })) : null,
+        scanBox, actions,
+        adminPanel() ? moderationButtons(p, reload) : null));
+    return card;
+  }
+
+  async function loadFeed() {
+    $("#composer-host").replaceChildren(composer());
+    const list = $("#feed-list");
+    const sort = ($("input[name=feed-sort]:checked") || {}).value || "new";
+    try {
+      const r = await api("/api/feed?sort=" + sort + "&page=" + feedState.page);
+      list.replaceChildren(...(r.posts.length ? r.posts.map((p) => postCard(p, loadFeed))
+        : [h("div", { class: "card empty-state" }, h("h2", { text: "No posts yet" }), h("p", { class: "muted", text: "Be the first to warn others about a scam." }))]));
+      const pages = Math.max(1, Math.ceil(r.total / r.page_size));
+      const pager = $("#feed-pager");
+      pager.replaceChildren();
+      if (pages > 1) {
+        pager.append(
+          h("button", { type: "button", class: "btn small", disabled: feedState.page <= 1, onclick: () => { feedState.page--; loadFeed(); } }, "Newer"),
+          h("span", { class: "muted small", text: "Page " + feedState.page + " of " + pages }),
+          h("button", { type: "button", class: "btn small", disabled: feedState.page >= pages, onclick: () => { feedState.page++; loadFeed(); } }, "Older"));
+      }
+    } catch (err) { list.replaceChildren(h("p", { class: "muted", text: err.message })); }
+  }
+
+  // ---------- Admin view ----------
+
+  async function loadAdmin() {
+    const body = $("#users-table tbody");
+    try {
+      const { users } = await api("/api/admin/users");
+      body.replaceChildren(...users.map((u) => {
+        const self = ME && u.id === ME.id;
+        const update = async (change, msg) => {
+          try {
+            await api("/api/admin/users/" + u.id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(change) });
+            toast(msg); loadAdmin();
+          } catch (err) { toast(err.message); loadAdmin(); }
+        };
+        const role = h("select", { "aria-label": "Role of " + u.username, disabled: self, onchange: (ev) => update({ role: ev.target.value }, u.username + " is now " + ev.target.value) },
+          ["user", "admin"].map((r) => h("option", { value: r, text: r === "admin" ? "Admin" : "User", selected: u.role === r })));
+        const block = h("button", { type: "button", class: "btn small" + (u.blocked ? "" : " danger"), disabled: self,
+          onclick: () => update({ blocked: !u.blocked }, u.username + (u.blocked ? " unblocked" : " blocked")) }, u.blocked ? "Unblock" : "Block");
+        return h("tr", {}, h("td", { text: String(u.id) }), h("td", {}, h("b", { text: u.username }), self ? h("span", { class: "muted small", text: " (you)" }) : null),
+          h("td", { text: fmtTime(u.created_at) }), h("td", { text: String(u.posts) }), h("td", {}, role),
+          h("td", {}, u.blocked ? pill("Blocked", "blocked") : pill("Active"), " ", block));
+      }));
+      const hidden = await api("/api/feed?hidden=true");
+      $("#hidden-posts").replaceChildren(...(hidden.posts.length ? hidden.posts.map((p) => postCard(p, loadAdmin))
+        : [h("p", { class: "muted small", text: "No hidden posts." })]));
+    } catch (err) { toast(err.message); }
+  }
+
   // ---------- routing, theme, start-up ----------
 
-  const VIEWS = ["analyze", "history", "dashboard", "about"];
+  const VIEWS = ["analyze", "feed", "history", "dashboard", "admin", "about"];
 
   function route() {
     const raw = (location.hash || "#analyze").slice(1);
     const caseMatch = /^case\/(\d+)$/.exec(raw);
-    const view = caseMatch ? "history" : (VIEWS.includes(raw) ? raw : "analyze");
+    let view = caseMatch ? "history" : (VIEWS.includes(raw) ? raw : "analyze");
+    if (ADMIN_VIEWS.has(view) && !adminPanel()) {
+      // History, Dashboard and Admin belong to the admin panel.
+      if (!ME) openAuth("login", "History, Dashboard and Admin are for admins. Log in with an admin account.");
+      else if (ME.role === "admin") toast("Switch to the admin panel (profile menu, top left) to open this page.");
+      else toast("Only admins can open this page.");
+      view = "analyze";
+      history.replaceState(null, "", "#analyze");
+    }
     for (const v of VIEWS) $("#view-" + v).hidden = v !== view;
     for (const a of $$(".tabs a")) {
       if (a.dataset.view === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
@@ -1441,7 +1861,9 @@
     if (view === "history") loadHistory();
     if (view === "dashboard") loadDashboard();
     if (view === "about") loadAbout();
-    if (caseMatch) openCase(Number(caseMatch[1]));
+    if (view === "feed") loadFeed();
+    if (view === "admin") loadAdmin();
+    if (caseMatch && view === "history") openCase(Number(caseMatch[1]));
   }
 
   function initTheme() {
@@ -1464,9 +1886,13 @@
     $("#app-name").textContent = META.app;
     $("#foot-text").textContent = META.app + " " + META.version;
     document.title = META.app + " - " + META.tagline;
+    initProfile();
+    await loadMe();
     initAnalyze();
     initHistory();
     initChat();
+    applyAuth();
+    for (const r of $$("input[name=feed-sort]")) r.addEventListener("change", () => { feedState.page = 1; loadFeed(); });
     pollAlerts();
     if (window.Notification && Notification.permission === "default") {
       document.addEventListener("click", () => { try { Notification.requestPermission(); } catch (e) { /* ignore */ } }, { once: true });

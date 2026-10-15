@@ -27,7 +27,7 @@ Use the terminal inside VS Code (the Python environment was created there).
 
 ```bash
 ./run.sh            # start the app, then open http://localhost:8000
-./run.sh test       # run all 302 tests
+./run.sh test       # run all 342 tests
 ./run.sh seed       # add demo cases so the dashboard is not empty
 ./run.sh unseed     # remove the demo cases
 ./run.sh demo       # demo web pages with fake scam links (fake social network) on http://127.0.0.1:8765
@@ -126,7 +126,7 @@ what it misses.
 - The URL model reads only the text of a link. It does not open the page.
 - The organisation list (`app/data/brands.json`) is a hand-made starter list. Check it
   before a real deployment: `python scripts/check_brands.py`.
-- No login. Analyst accounts and roles are future work.
+- Accounts are simple: username and password, no e-mail check or password reset. An admin can block a user.
 
 ## Automatic checking (no copy-paste)
 
@@ -141,15 +141,37 @@ The home page offers both downloads: the Android app (the latest build in `andro
 extension as a zip (unzip, then `chrome://extensions` > Developer mode > Load unpacked). Click the
 extension icon for an on/off switch and a list of the risky links on the current page.
 
-**Sender memory.** Each new message is checked together with the same sender's earlier risky messages
-(all time; the same phone number written as +91…, 0… or with spaces counts as one sender). A follow-up such
+**Sender memory.** Each new message is first scored on its own. The same sender's last 3 risky messages
+(the same phone number written as +91…, 0… or with spaces counts as one sender) are added only when the new
+message points back to an earlier message or is itself already suspicious (Low or higher); then the result shows
+both scores ("This message alone: Safe 15" and the combined score). A plain "hello" keeps its own score. A follow-up such
 as "open the link I sent you earlier" from a sender who earlier sent a phishing link is rated at least High
 ("Points to an earlier phishing link from this sender"). After 3 risky messages from one sender SatarkAI
 recommends blocking it: a phone notification with a *Block number* button (opens Android's Blocked numbers
 screen with the number copied), a banner on the result, and a badge in *Repeat senders*.
 
-Risky messages pop up as live alerts in the web app. With `SATARK_HOST=0.0.0.0`, other devices can only
-call `/api/ingest`, and only with the pairing code; everything else stays on the laptop.
+Risky messages pop up as live alerts in the web app (admin panel). The phone app sends messages to
+`/api/ingest` with the pairing code.
+
+## Accounts, Feed and PDF reports
+
+- **Profile (top left):** log in or register. The **first account registered on this laptop** becomes the admin;
+  accounts registered from other devices are always users, so nobody on the Wi-Fi can make themselves admin.
+  An admin can make other users admin. Admins switch between the **user panel** and the **admin panel** in the
+  profile menu.
+- **Who can do what:** everyone can use Analyze and read the Feed. Posting, voting, commenting and PDF reports
+  need an account. History, Dashboard, live alerts and the Admin tab are only in the admin panel.
+- **Feed:** posts with a title, a story, an optional scam message (SatarkAI analyses it on the server and attaches
+  the score) and an optional screenshot. Up / down votes, comments, sort by New or Top, *Report on
+  cybercrime.gov.in* (copies the complaint text) and *Call 1930* on every post. *Share to Feed* on an Analyze result
+  fills in the post. Admins pin, mark *Verified scam*, hide and delete posts, and block users.
+- **PDF report:** *Download PDF* on an Analyze result, *PDF report* on a feed post, *PDF* on a History case.
+  Hindi text prints correctly (Noto Sans fonts in `app/data/fonts/`, SIL Open Font License); links are printed in
+  safe form so they cannot be clicked.
+- **Security:** passwords are stored as scrypt hashes; the login cookie is HttpOnly and SameSite; requests from other
+  websites are refused; after 8 wrong passwords an address waits 10 minutes; screenshots are decoded and saved
+  again (only PNG / JPEG / WebP, at most 3 MB), which also removes hidden data such as GPS positions.
+- With `./run.sh wifi`, other devices on the same Wi-Fi or hotspot open `http://<laptop-ip>:8000` in a browser.
 
 ## Browser extension (optional)
 
@@ -168,6 +190,9 @@ extension does not block anything.
 ```
 app/
   main.py            REST API and static pages
+  accounts.py        users, passwords, login sessions
+  feed.py            community feed: posts, votes, comments, screenshots
+  report_pdf.py      PDF case reports
   chat.py            the assistant: built-in answers, optional Groq
   db.py              history: SQLite + full-text search
   config.py          app name, limits, risk levels
@@ -177,7 +202,7 @@ app/
   static/            index.html, app.js, styles.css, go.html, go.js, Chart.js and Inter font (local copies)
 ml/                  download_data.py, train.py, sanity_legit_urls.txt
 models/              trained models and metrics.json
-tests/               302 tests: unit, API, security, models, acceptance R1-R9, browser
+tests/               342 tests: unit, API, security, accounts, feed, models, acceptance R1-R9, browser
 extension/           browser extension
 scripts/             seed_demo.py, check_brands.py
 PLAN.md              the plan, design decisions and the findings log

@@ -41,19 +41,32 @@ class Store(context: Context) {
     }
 }
 
-/** One checked SMS. level is null when SatarkAI could not be reached. */
+/** One checked SMS. level is null when SatarkAI could not be reached.
+ *  ownLevel / ownScore: the message's own result, set only when the sender's earlier messages raised the score. */
 data class Checked(
     val time: Long, val sender: String, val text: String,
     val level: String?, val score: Int?, val category: String?, val reason: String?, val error: String?,
+    val ownLevel: String? = null, val ownScore: Int? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().put("time", time).put("sender", sender).put("text", text)
         .put("level", level).put("score", score).put("category", category).put("reason", reason).put("error", error)
+        .put("ownLevel", ownLevel).put("ownScore", ownScore)
 
     companion object {
         fun fromJson(o: JSONObject) = Checked(
             o.optLong("time"), o.optString("sender"), o.optString("text"),
             o.optString("level").ifEmpty { null }, if (o.has("score") && !o.isNull("score")) o.getInt("score") else null,
             o.optString("category").ifEmpty { null }, o.optString("reason").ifEmpty { null }, o.optString("error").ifEmpty { null },
+            o.optString("ownLevel").ifEmpty { null }, if (o.has("ownScore") && !o.isNull("ownScore")) o.getInt("ownScore") else null,
         )
+
+        /** From the server's answer to /api/ingest. */
+        fun fromResponse(sender: String, text: String, r: JSONObject): Checked {
+            val reasons = r.optJSONArray("reasons")
+            val raised = r.optBoolean("history_raised")
+            return Checked(System.currentTimeMillis(), sender, text, r.optString("level"), r.optInt("score"),
+                r.optString("category"), if (reasons != null && reasons.length() > 0) reasons.getString(0) else null, null,
+                if (raised) r.optString("own_level") else null, if (raised) r.optInt("own_score") else null)
+        }
     }
 }

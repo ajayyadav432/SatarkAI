@@ -63,11 +63,15 @@ def test_ingest_rejects_bad_input(client, body):
     assert post(client, **body).status_code == 422
 
 
-def test_lan_mode_blocks_everything_but_ingest(client, monkeypatch):
+def test_visitors_without_login_cannot_see_admin_pages(anon, monkeypatch):
+    """Other devices on the Wi-Fi reach the website, but History, Dashboard and alerts need an admin login."""
     monkeypatch.setattr(config, "LAN_MODE", True)
-    for path in ("/api/cases", "/api/stats", "/api/alerts", "/", "/api/meta"):
-        assert client.get(path).status_code == 403, path
-    assert post(client, text=SCAM_KYC, ref="lan").status_code == 200
+    for path in ("/api/cases", "/api/stats", "/api/alerts", "/api/auto-status", "/api/cases/export.csv"):
+        assert anon.get(path).status_code == 401, path
+    for path in ("/", "/api/meta", "/api/feed", "/api/stats/summary"):
+        assert anon.get(path).status_code == 200, path
+    assert "kpis" not in anon.get("/api/stats/summary").json()          # counts only, no messages
+    assert post(anon, text=SCAM_KYC, ref="lan").status_code == 200       # the phone app (pairing code)
 
 
 def test_check_urls_batch(client):

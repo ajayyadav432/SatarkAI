@@ -273,7 +273,7 @@ Measured on new messages we wrote ourselves:
 
 ### A scammer sends a phishing link first, then a harmless "open the link I sent". Does the AI fail?
 
-Not any more. SatarkAI remembers each sender's earlier risky messages (all time) and uses them as evidence:
+Not any more. SatarkAI scores every message on its own first. It adds the sender's last 3 risky messages as evidence only when the new message points back to an earlier one or is itself already suspicious (Low or higher), and then shows both scores. A plain "hello" from that sender keeps its own score:
 
 | Message from 9845012345 | Without sender memory | With sender memory |
 |---|---|---|

@@ -151,9 +151,7 @@ fun HomeScreen() {
                 val sender = "Sample (test)"
                 val item = try {
                     val r = SatarkClient.checkSms(store.serverUrl, store.pairingCode, sender, SAMPLE_SCAM, "sample-${System.currentTimeMillis()}")
-                    val reasons = r.optJSONArray("reasons")
-                    Checked(System.currentTimeMillis(), sender, SAMPLE_SCAM, r.optString("level"), r.optInt("score"),
-                        r.optString("category"), if (reasons != null && reasons.length() > 0) reasons.getString(0) else null, null)
+                    Checked.fromResponse(sender, SAMPLE_SCAM, r)
                 } catch (e: Exception) {
                     Checked(System.currentTimeMillis(), sender, SAMPLE_SCAM, null, null, null, null, e.message ?: e.javaClass.simpleName)
                 }
@@ -204,6 +202,9 @@ private fun RecentCard(item: Checked) {
                 Text(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(item.time)), fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            if (item.ownLevel != null)
+                Text("This message alone: ${item.ownLevel} ${item.ownScore} · raised by this sender's earlier messages",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(item.text, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
             val note = item.error ?: listOfNotNull(item.category?.takeIf { it != "None" }, item.reason).joinToString(" · ")
             if (note.isNotEmpty()) Text(note, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

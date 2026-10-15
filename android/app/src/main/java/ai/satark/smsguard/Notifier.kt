@@ -82,9 +82,14 @@ object Notifier {
             }
             risky -> {
                 title = "⚠ Scam SMS · ${item.level} ${item.score}"
-                line = listOfNotNull(category, "from ${item.sender}").joinToString(" · ")
+                line = listOfNotNull(item.ownLevel?.let { "alone: $it ${item.ownScore}" }, category, "from ${item.sender}")
+                    .joinToString(" · ")
                 big = buildString {
                     append(category ?: "Suspicious message").append(" · from ").append(item.sender)
+                    if (item.ownLevel != null) {
+                        append("\n\nThis message alone: ").append(item.ownLevel).append(" ").append(item.ownScore)
+                        append("\nWith this sender's earlier messages: ").append(item.level).append(" ").append(item.score)
+                    }
                     item.reason?.let { append("\n\nWhy: ").append(it) }
                     append("\n\nDo not click links, call back, pay or share an OTP.")
                     append("\nLost money? Call $HELPLINE now.")

@@ -5,11 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SatarkAI - Phishing, scam and malicious URL detection</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/static/styles.css?v=1.7">
-  <script src="/static/theme.js?v=1.7"></script>
+  <link rel="stylesheet" href="/static/styles.css?v=1.8">
+  <script src="/static/theme.js?v=1.8"></script>
 </head>
 <body>
   <header class="topbar">
+    <div class="profile" id="profile">
+      <button type="button" class="profile-btn" id="profile-btn" aria-haspopup="true" aria-expanded="false" aria-controls="profile-menu">
+        <span class="avatar" id="avatar" aria-hidden="true">?</span>
+        <span class="profile-text"><b id="profile-name">Log in</b><small id="profile-role">Guest</small></span>
+      </button>
+      <div class="profile-menu card" id="profile-menu" hidden></div>
+    </div>
     <a class="brand" href="#analyze" aria-label="Home">
       <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
         <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
@@ -19,8 +26,10 @@
     </a>
     <nav class="tabs" aria-label="Sections">
       <a href="#analyze" data-view="analyze">Analyze</a>
-      <a href="#history" data-view="history">History</a>
-      <a href="#dashboard" data-view="dashboard">Dashboard</a>
+      <a href="#feed" data-view="feed">Feed</a>
+      <a href="#history" data-view="history" class="admin-only" hidden>History</a>
+      <a href="#dashboard" data-view="dashboard" class="admin-only" hidden>Dashboard</a>
+      <a href="#admin" data-view="admin" class="admin-only" hidden>Admin</a>
       <a href="#about" data-view="about">How it works</a>
     </nav>
     <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch between light and dark theme" title="Light / dark">
@@ -145,6 +154,37 @@
       </div>
     </section>
 
+    <!-- FEED -->
+    <section id="view-feed" class="view" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Scam feed</h1>
+          <p class="muted">Scams people received, shared so everyone learns to spot them. Never post your own OTP, PIN or bank details.</p>
+        </div>
+        <div class="segmented compact" id="feed-sort" role="group" aria-label="Sort posts">
+          <label><input type="radio" name="feed-sort" value="new" checked><span>New</span></label>
+          <label><input type="radio" name="feed-sort" value="top"><span>Top</span></label>
+        </div>
+      </div>
+      <div class="feed-layout">
+        <div class="feed-main">
+          <div id="composer-host"></div>
+          <div id="feed-list" class="feed-list" aria-live="polite"></div>
+          <div class="pager" id="feed-pager"></div>
+        </div>
+        <aside class="feed-side card">
+          <h3>Lost money or shared details?</h3>
+          <p class="small">Call <b>1930</b> at once (national cyber-fraud helpline) and report on <b>cybercrime.gov.in</b>. Each post has a <i>Report</i> button that copies the details for the complaint form.</p>
+          <h3>Good posts</h3>
+          <ul class="small tight">
+            <li>Paste the scam message: SatarkAI checks it and attaches the score.</li>
+            <li>Hide your own name, number and account details in screenshots.</li>
+            <li>Vote up posts that helped you.</li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
     <!-- HISTORY -->
     <section id="view-history" class="view" hidden>
       <div class="view-head">
@@ -217,6 +257,27 @@
       <div id="dashboard-body" class="dash"></div>
     </section>
 
+    <!-- ADMIN -->
+    <section id="view-admin" class="view" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Admin</h1>
+          <p class="muted">Users and hidden feed posts. Pin, verify, hide or delete posts from the Feed while in the admin panel.</p>
+        </div>
+      </div>
+      <div class="card table-card">
+        <h3>Users</h3>
+        <div class="table-wrap">
+          <table class="data" id="users-table">
+            <thead><tr><th scope="col">#</th><th scope="col">User</th><th scope="col">Joined</th><th scope="col">Posts</th><th scope="col">Role</th><th scope="col">Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <h3 class="section-title">Hidden posts</h3>
+      <div id="hidden-posts" class="feed-list"></div>
+    </section>
+
     <!-- ABOUT / MODEL CARD -->
     <section id="view-about" class="view" hidden>
       <div class="view-head">
@@ -235,6 +296,26 @@
       <button type="button" class="icon-btn" id="case-close" aria-label="Close">&#x2715;</button>
     </div>
     <div id="case-body" class="dialog-body"></div>
+  </dialog>
+
+  <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-title">
+    <div class="dialog-head">
+      <h2 id="auth-title">Log in</h2>
+      <button type="button" class="icon-btn" id="auth-close" aria-label="Close">&#x2715;</button>
+    </div>
+    <form id="auth-form" class="dialog-body" autocomplete="on">
+      <div class="segmented compact" role="group" aria-label="Log in or register">
+        <label><input type="radio" name="auth-mode" value="login" checked><span>Log in</span></label>
+        <label><input type="radio" name="auth-mode" value="register"><span>Register</span></label>
+      </div>
+      <p class="small muted" id="auth-why" hidden></p>
+      <label class="field"><span>Username</span>
+        <input type="text" id="auth-user" name="username" required minlength="3" maxlength="30" autocomplete="username"></label>
+      <label class="field"><span>Password <small class="muted" id="auth-pw-hint"></small></span>
+        <input type="password" id="auth-pass" name="password" required maxlength="200" autocomplete="current-password"></label>
+      <p class="form-error" id="auth-error" role="alert" hidden></p>
+      <button type="submit" class="btn primary" id="auth-submit">Log in</button>
+    </form>
   </dialog>
 
   <!-- ASSISTANT -->
@@ -263,7 +344,7 @@
     <span id="foot-text">SatarkAI</span> &middot; analysis runs fully offline &middot; IEEE-IGNITE Hackathon 2026, SKIT025
   </footer>
 
-  <script src="/static/vendor/chart.umd.min.js?v=1.7"></script>
-  <script src="/static/app.js?v=1.7"></script>
+  <script src="/static/vendor/chart.umd.min.js?v=1.8"></script>
+  <script src="/static/app.js?v=1.8"></script>
 </body>
 </html>
